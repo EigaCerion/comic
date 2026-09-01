@@ -1,0 +1,46 @@
+{
+  "name": "naruread",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NaruReader - aplikasi pembaca komik lokal (Phase 1 MVP)",
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c green,yellow \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm run dev --workspace apps/api",
+    "dev:web": "npm run dev --workspace apps/web",
+    "start:worker": "npm run start:worker --workspace apps/api",
+    "init:db": "npm run init:db --workspace apps/api",
+    "reset:db": "npm run reset:db --workspace apps/api",
+    "seed:test-data": "npm run seed:test-data --workspace apps/api",
+    "backup:db": "npm run backup:db --workspace apps/api",
+    "stats:db": "npm run stats:db --workspace apps/api",
+    "test:db": "npm run test:db --workspace apps/api",
+    "test:extractor": "npm run test:extractor --workspace apps/api",
+    "build": "npm run build --workspace apps/web",
+    "preview": "npm run preview --workspace apps/web",
+    "lan": "npm run lan --workspace apps/api",
+    "dev:lan": "concurrently -n api,web -c green,yellow \"npm:dev:api\" \"npm:dev:web\" \"npm:lan\"",
+    "start:lan": "npm run build && npm run lan && npm run start --workspace apps/api",
+    "lint": "npm run lint --workspaces --if-present",
+    "start:quiet": "node apps/api/scripts/launch.js",
+    "stop": "node apps/api/scripts/stop.js",
+    "precheck": "node apps/api/scripts/preflight.js",
+    "bench:compress": "npm run bench:compress --workspace apps/api",
+    "covers:backfill": "npm run covers:backfill --workspace apps/api",
+    "test:audit": "npm run test:audit --workspace apps/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true,
+    "sharp@0.34.5": true,
+    "esbuild@0.21.5": true
+  }
+}

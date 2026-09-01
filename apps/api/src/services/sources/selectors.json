@@ -1,0 +1,31 @@
+{
+  "_readme": [
+    "Override selector per host. Kalau sebuah host tidak terdaftar, extractor memakai",
+    "heuristik generik (container dengan gambar terbanyak + pola link chapter).",
+    "Isi 'preset' dengan nama preset di sources/index.js, atau tulis selector sendiri.",
+    "Nilai di bawah adalah titik awal untuk tema WordPress komik yang umum —",
+    "kalau sebuah situs mengubah layout, cukup perbaiki baris di file ini,",
+    "tidak perlu menyentuh kode."
+  ],
+  "hosts": {
+    "komiku.org": {
+      "preset": "generic"
+    },
+    "komikpedia.net": {
+      "note": "Bukan tema wp-manga: situs Next.js, daftar chapter lengkap ada di payload <script>. Dibiarkan memakai heuristik + panen payload."
+    },
+    "mgkomik.id": {
+      "preset": "wp-manga"
+    },
+    "siikomik.net": {
+      "preset": "ts-reader"
+    },
+    "ngomik.cc": {
+      "preset": "ts-reader"
+    },
+    "webtoons.com": {
+      "note": "Layanan resmi berlisensi; ToS-nya melarang pengambilan otomatis. Tidak disediakan preset.",
+      "disabled": true
+    }
+  }
+}

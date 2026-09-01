@@ -1,0 +1,136 @@
+@import './theme.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply font-sans text-night antialiased dark:text-paper;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-naruto/70 ring-offset-2 ring-offset-paper dark:ring-offset-night;
+  }
+}
+
+@layer components {
+  /* Permukaan dasar.
+     Sempat memakai backdrop-blur supaya terasa berlapis. Itu keliru: kelas ini
+     dipakai SETIAP ubin komik, jadi satu layar beranda berisi 18 lapis blur yang
+     harus dihitung ulang tiap frame — penyebab utama scroll berat di HP. Kesan
+     berlapis sekarang dibangun dari warna dan garis rambut saja, yang gratis. */
+  .card {
+    @apply rounded-2xl border border-paper-line bg-paper-soft transition-colors duration-200
+           dark:border-night-line dark:bg-night-card;
+  }
+
+  /* Dipakai kartu yang bisa diklik. Dipisah dari .card supaya kartu statis
+     tidak ikut bereaksi terhadap kursor. */
+  .card-interactive {
+    @apply card hover:border-naruto/40 dark:hover:border-naruto/40;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold
+           transition-all duration-150 active:scale-[0.97]
+           disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
+  }
+
+  .btn-primary {
+    @apply btn bg-leaf text-white hover:bg-leaf-light hover:shadow-glow-leaf active:bg-leaf-dark;
+  }
+
+  .btn-accent {
+    @apply btn bg-naruto text-night hover:bg-naruto-light hover:shadow-glow active:bg-naruto-dark;
+  }
+
+  .btn-ghost {
+    @apply btn border border-paper-line bg-transparent hover:border-night/20 hover:bg-paper
+           dark:border-night-line dark:hover:border-paper/20 dark:hover:bg-night-raise;
+  }
+
+  .btn-danger {
+    @apply btn bg-danger text-white hover:opacity-90;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-paper-line bg-paper-soft px-3 py-2 text-sm
+           transition-colors placeholder:text-night/40
+           focus:border-naruto/70 focus:outline-none focus:ring-1 focus:ring-naruto/40
+           dark:border-night-line dark:bg-night-soft/80 dark:placeholder:text-paper/30;
+  }
+
+  .chip {
+    @apply inline-flex items-center rounded-full border border-paper-line bg-night/[0.03] px-2.5 py-0.5
+           text-xs font-medium transition-colors
+           dark:border-night-line dark:bg-paper/[0.04];
+  }
+
+  /* Label mikro huruf besar berjarak — penanda bagian yang ringan, dipakai
+     untuk keterangan yang tidak boleh mencuri perhatian dari isinya. */
+  .label-mikro {
+    @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-night/45 dark:text-paper/45;
+  }
+
+  /* Strip webtoon: dibaca sebagai satu gambar panjang. font-size/line-height 0
+     mematikan celah baseline antar elemen inline, dan tiap gambar dibuat block
+     supaya tidak ada garis tipis di antara halaman. */
+  .reader-strip {
+    font-size: 0;
+    line-height: 0;
+    /* Matikan scroll anchoring: saat gambar lazy-load selesai dan tingginya
+       berubah, browser bisa menggeser posisi scroll sendiri — terasa seperti
+       halaman saling menimpa. */
+    overflow-anchor: none;
+  }
+
+  .reader-strip img {
+    display: block;
+    margin: 0;
+  }
+
+  /*
+   * Jarak tepi aplikasi — satu sumber kebenaran.
+   *
+   * Nilai yang sama sebelumnya ditulis terpisah di tiga tempat (main, bilah
+   * header, footer). Begitu salah satu diubah, tepi kirinya tidak lagi sejajar
+   * dan itu termasuk isyarat "tidak rapi" yang paling cepat ditangkap mata.
+   */
+  .gutter-app {
+    @apply px-4 sm:px-6 lg:px-8 2xl:px-12;
+  }
+
+  /*
+   * Grid sampul komik.
+   *
+   * Mulai sm memakai auto-fill, bukan jumlah kolom per breakpoint. Alasannya:
+   * breakpoint Tailwind mengukur lebar VIEWPORT, sedangkan grid ini hidup di
+   * dalam kolom yang sudah dipotong 256px oleh sidebar. Akibat lamanya, di
+   * viewport 1280 breakpoint xl menyalakan 6 kolom pada area yang cuma 982px
+   * dan tiap kartu jatuh ke 154px. auto-fill membaca kotak grid yang sebenarnya,
+   * jadi jumlah kolom selalu mengikuti ruang yang benar-benar tersedia.
+   *
+   * 170px adalah batas bawah sampul aspek 2/3 agar judul di gambar masih terbaca.
+   * Di bawah sm tetap dua kolom tetap — itu yang sudah terbukti pas di 375px.
+   */
+  .grid-komik {
+    @apply grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(170px,1fr))] sm:gap-4 xl:gap-5;
+  }
+
+  .section-title {
+    @apply flex items-center gap-2 text-lg font-bold tracking-tight;
+  }
+}

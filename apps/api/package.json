@@ -1,0 +1,43 @@
+{
+  "name": "@naruread/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/server.js",
+  "bin": {
+    "naruread": "src/server.js",
+    "naruread-worker": "src/worker.js"
+  },
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "start:worker": "node src/worker.js",
+    "init:db": "node scripts/init-db.js",
+    "reset:db": "node scripts/init-db.js --force",
+    "seed:test-data": "node scripts/seed-test-data.js",
+    "backup:db": "node scripts/backup-db.js",
+    "stats:db": "node scripts/stats-db.js",
+    "test:db": "node scripts/test-db.js",
+    "test:extractor": "node scripts/test-extractor.js",
+    "lan": "node scripts/lan-info.js",
+    "bench:compress": "node scripts/bench-compression.js",
+    "covers:backfill": "node scripts/backfill-covers.js",
+    "test:audit": "node scripts/test-audit.js",
+    "stop": "node scripts/stop.js",
+    "precheck": "node scripts/preflight.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "cheerio": "^1.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "multer": "^2.0.1",
+    "multicast-dns": "^7.2.5",
+    "node-stream-zip": "^1.16.0",
+    "p-limit": "^6.2.0",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.35.4"
+  }
+}

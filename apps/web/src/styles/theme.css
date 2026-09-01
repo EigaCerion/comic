@@ -1,0 +1,80 @@
+/* Hidden Leaf Village theme — token warna dipakai Tailwind (tailwind.config.js)
+   dan komponen yang butuh nilai mentah. */
+:root {
+  --primary-green: #0f9d76;
+  --accent-orange: #ff8a2b;
+  --dark-bg: #070a0f;
+  --light-bg: #f4f6fa;
+  --warning-red: #f4436c;
+  --success-blue: #38bdf8;
+  --text-primary: #101722;
+  --text-secondary: #5a6779;
+
+  --reader-bg: #ffffff;
+}
+
+.dark {
+  --text-primary: #eaf0f8;
+  --text-secondary: #8b9bb1;
+  /* Latar baca dibuat lebih gelap daripada latar aplikasi: saat membaca, yang
+     boleh bercahaya hanyalah halaman komiknya. */
+  --reader-bg: #04060a;
+}
+
+/*
+ * Latar aplikasi.
+ *
+ * Tekstur titik-titik lama diganti dua lapis: kisi halus yang memberi kesan
+ * bidang teknis, dan dua sapuan cahaya sangat tipis di sudut supaya layar
+ * gelap tidak terasa mati. Keduanya sengaja di bawah 5% opasitas — begitu
+ * latar mulai "terlihat", ia mulai mengganggu sampul komik yang jadi isi utama.
+ */
+.app-bg {
+  background-color: var(--light-bg);
+  background-image:
+    linear-gradient(rgba(16, 23, 34, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 23, 34, 0.028) 1px, transparent 1px);
+  background-size: 32px 32px, 32px 32px;
+}
+
+.dark .app-bg {
+  background-color: var(--dark-bg);
+  background-image:
+    radial-gradient(70rem 34rem at 12% 0%, rgba(255, 138, 43, 0.06), transparent 60%),
+    radial-gradient(60rem 32rem at 105% 3%, rgba(56, 189, 248, 0.055), transparent 62%),
+    linear-gradient(rgba(148, 180, 220, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 180, 220, 0.022) 1px, transparent 1px);
+  /* Cahaya dipatok di kepala halaman dengan tinggi tetap, lalu ikut menggulung
+     bersama isi.
+
+     Sebelumnya dua lapis ini memakai `background-attachment: fixed`. Itu terlihat
+     bagus di laptop tapi memaksa browser mengecat ulang SELURUH viewport pada
+     setiap frame scroll — di HP dan tablet hasilnya scroll yang terasa berat.
+     Latar yang ikut menggulung bisa di-composite biasa, jadi praktis gratis. */
+  background-size: 100% 46rem, 100% 46rem, 32px 32px, 32px 32px;
+  background-repeat: no-repeat, no-repeat, repeat, repeat;
+}
+
+/* Scrollbar tipis supaya reader tidak terganggu */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.28) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.28);
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 138, 43, 0.55);
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}

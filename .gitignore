@@ -1,0 +1,23 @@
+node_modules/
+dist/
+build/
+coverage/
+
+# environment
+.env
+.env.local
+.env.*.local
+
+# Data lokal — JANGAN PERNAH di-commit.
+# Seluruh folder diabaikan, bukan per-berkas: isinya database (berisi hash sandi
+# dan akun), gambar komik, cadangan, dan catatan alamat jaringan terakhir yang
+# memuat IP lokal. Aplikasi membuat ulang folder ini sendiri saat pertama jalan.
+apps/api/data/
+apps/api/import/
+apps/api/logs/*.log
+
+# editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
