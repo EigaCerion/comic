@@ -42,7 +42,7 @@ git clone <url-repo-ini>
 ```
 
 ```bash
-cd naruread-app
+cd comic
 ```
 
 ### 2. Pasang dependensi
