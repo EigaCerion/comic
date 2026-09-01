@@ -606,6 +606,27 @@ di versi 2 adalah yang didukung untuk React 18/19; API yang dipakai identik.
 
 ---
 
+## 🤝 Berkontribusi
+
+Kontribusi sangat diterima — perbaikan bug, preset sumber baru, terjemahan,
+maupun dokumentasi.
+
+Baca **[CONTRIBUTING.md](CONTRIBUTING.md)** lebih dulu. Di sana dijelaskan cara
+melaporkan bug dengan informasi yang benar-benar berguna, konvensi penamaan yang
+dipakai proyek ini (campuran Indonesia–Inggris yang disengaja), cara menguji
+perubahan, dan empat batasan yang wajib dihormati agar perbaikan lama tidak
+terulang rusak.
+
+Ringkas untuk yang buru-buru:
+
+1. Fork, lalu buat branch dari `main`
+2. Satu pokok masalah per pull request
+3. `npm run lint` harus bersih
+4. Uji di dua ukuran layar kalau menyentuh tampilan
+5. Tulis di deskripsi PR **bagaimana kamu membuktikannya berhasil** — angka, bukan kesan
+
+---
+
 ## ➡️ Rencana berikutnya
 
 - Adapter scraper per sumber (`komiku`, `komikpedia`, `webtoons`, dst) yang
@@ -613,3 +634,18 @@ di versi 2 adalah yang didukung untuk React 18/19; API yang dipakai identik.
 - Batch import dari daftar URL + jadwal update otomatis
 - `react-window` untuk virtual scrolling saat koleksi >1000 komik
 - Unit test (Jest) untuk service layer dan E2E (Cypress) untuk alur baca
+
+---
+
+## 📄 Lisensi
+
+Dirilis di bawah [Lisensi MIT](LICENSE) — bebas dipakai, dimodifikasi, dan
+didistribusikan, termasuk untuk keperluan komersial, selama pemberitahuan hak
+cipta tetap disertakan.
+
+© 2026 **Yusuf Aristokrat**
+
+NaruReader adalah mesin pembaca dan pengelola koleksi. Aplikasi ini tidak
+memaketkan, menyediakan, maupun mendistribusikan komik apa pun — semua konten
+berasal dari sumber yang kamu tentukan sendiri, dan tanggung jawab atas
+penggunaannya ada padamu.

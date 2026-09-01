@@ -42,5 +42,7 @@
     "better-sqlite3@12.11.1": true,
     "sharp@0.34.5": true,
     "esbuild@0.21.5": true
-  }
+  },
+  "license": "MIT",
+  "author": "Yusuf Aristokrat"
 }
