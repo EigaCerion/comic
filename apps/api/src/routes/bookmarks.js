@@ -10,7 +10,7 @@ router.get(
   '/',
   asyncHandler(async (req, res) => {
     const comicId = req.query.comic_id ? Number(req.query.comic_id) : undefined;
-    res.json({ items: progressService.listBookmarks({ comicId }) });
+    res.json({ items: progressService.listBookmarks({ comicId, userId: req.user.id }) });
   }),
 );
 
@@ -25,6 +25,7 @@ router.post(
 
     res.status(201).json(
       progressService.addBookmark({
+        userId: req.user.id,
         comicId,
         chapterId,
         pageNumber: body.page_number ?? body.pageNumber,
@@ -38,7 +39,8 @@ router.post(
 router.delete(
   '/:id',
   asyncHandler(async (req, res) => {
-    res.json(progressService.deleteBookmark(Number(req.params.id)));
+    // Pemilik ikut dikirim: menghapus hanya berlaku untuk bookmark sendiri.
+    res.json(progressService.deleteBookmark(Number(req.params.id), req.user.id));
   }),
 );
 

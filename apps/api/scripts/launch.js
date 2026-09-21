@@ -10,7 +10,6 @@
 // bersama jendelanya.
 import fs from 'node:fs';
 import http from 'node:http';
-import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
@@ -18,7 +17,6 @@ import config, { API_ROOT, REPO_ROOT } from '../src/utils/config.js';
 import {
   qrTerminal,
   urlUtama,
-  namaAdapterVpn,
   MDNS_HOST,
   MDNS_ENABLED,
 } from '../src/services/connectService.js';
@@ -51,12 +49,6 @@ const run = (command, args, cwd) =>
     );
     child.on('error', reject);
   });
-
-const alamatJaringan = () =>
-  Object.entries(os.networkInterfaces())
-    .flatMap(([name, list]) => (list ?? []).map((info) => ({ ...info, name })))
-    .filter((info) => info.family === 'IPv4' && !info.internal)
-    .filter((info) => !/vethernet|vmware|virtualbox|loopback|hyper-v/i.test(info.name));
 
 /** QR berisi alamat LAN: dipindai dari HP, langsung terbuka tanpa mengetik apa pun. */
 const cetakQr = async (pilihan) => {
@@ -150,7 +142,7 @@ const main = async () => {
   }
 
   await menyala; // munculkan galat sebenarnya kalau server gagal menyala
-  console.log(`\n   Gagal menyala dalam 20 detik. Periksa ${LOG_DIR}\\server.log\n`);
+  console.log(`\n   Gagal menyala dalam 20 detik. Periksa ${LOG_DIR}\\error.log\n`);
   process.exit(1);
 };
 

@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS pages (
 -- Reading progress (satu baris per comic+chapter)
 CREATE TABLE IF NOT EXISTS reading_progress (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
   comic_id INTEGER NOT NULL,
   chapter_id INTEGER NOT NULL,
   last_page_read INTEGER DEFAULT 1,
@@ -63,12 +64,13 @@ CREATE TABLE IF NOT EXISTS reading_progress (
   read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(comic_id) REFERENCES comics(id) ON DELETE CASCADE,
   FOREIGN KEY(chapter_id) REFERENCES chapters(id) ON DELETE CASCADE,
-  UNIQUE(comic_id, chapter_id)
+  UNIQUE(user_id, comic_id, chapter_id)
 );
 
 -- Bookmarks
 CREATE TABLE IF NOT EXISTS bookmarks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
   comic_id INTEGER NOT NULL,
   chapter_id INTEGER NOT NULL,
   page_number INTEGER,
@@ -97,12 +99,13 @@ CREATE TABLE IF NOT EXISTS download_queue (
 );
 
 -- Indexes
+-- Pencarian chapters per comic_id dan pages per chapter_id tidak butuh indeks
+-- sendiri: UNIQUE(comic_id, chapter_number) dan UNIQUE(chapter_id, page_number)
+-- sudah menjadi indeks dengan kolom itu di depan.
 CREATE INDEX IF NOT EXISTS idx_comics_favorite ON comics(is_favorite);
 CREATE INDEX IF NOT EXISTS idx_comics_status ON comics(status);
 CREATE INDEX IF NOT EXISTS idx_comics_updated ON comics(updated_at DESC);
-CREATE INDEX IF NOT EXISTS idx_chapters_comic ON chapters(comic_id);
 CREATE INDEX IF NOT EXISTS idx_chapters_downloaded ON chapters(is_downloaded);
-CREATE INDEX IF NOT EXISTS idx_pages_chapter ON pages(chapter_id);
 CREATE INDEX IF NOT EXISTS idx_reading_progress_comic ON reading_progress(comic_id);
 CREATE INDEX IF NOT EXISTS idx_reading_progress_read_at ON reading_progress(read_at DESC);
 CREATE INDEX IF NOT EXISTS idx_queue_status ON download_queue(status, priority DESC, id);
@@ -217,5 +220,4 @@ CREATE TABLE IF NOT EXISTS comic_comments (
 
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
-CREATE INDEX IF NOT EXISTS idx_ratings_comic ON comic_ratings(comic_id);
 CREATE INDEX IF NOT EXISTS idx_comments_comic ON comic_comments(comic_id, created_at DESC);

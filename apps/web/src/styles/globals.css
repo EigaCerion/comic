@@ -37,12 +37,6 @@
            dark:border-night-line dark:bg-night-card;
   }
 
-  /* Dipakai kartu yang bisa diklik. Dipisah dari .card supaya kartu statis
-     tidak ikut bereaksi terhadap kursor. */
-  .card-interactive {
-    @apply card hover:border-naruto/40 dark:hover:border-naruto/40;
-  }
-
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold
            transition-all duration-150 active:scale-[0.97]

@@ -17,11 +17,23 @@ log.info('worker standalone jalan — Ctrl+C untuk berhenti');
 // jaga proses tetap hidup
 setInterval(() => {}, 1 << 30);
 
+// Galat yang tidak tertangkap tidak boleh membuat worker hilang diam-diam:
+// pekerja unduhan penuh dengan operasi jaringan yang bisa gagal kapan saja.
+process.on('unhandledRejection', (alasan) => {
+  log.error('janji gagal tanpa penangan di worker:', alasan);
+  setTimeout(() => process.exit(1), 100).unref();
+});
+
+process.on('uncaughtException', (galat) => {
+  log.error('galat tidak tertangkap di worker:', galat);
+  setTimeout(() => process.exit(1), 100).unref();
+});
+
 ['SIGINT', 'SIGTERM'].forEach((signal) =>
   process.on(signal, () => {
     log.info(`${signal} diterima, worker berhenti`);
     stopWorker();
-stopSupervisors();
+    stopSupervisors();
     closeDb();
     process.exit(0);
   }),

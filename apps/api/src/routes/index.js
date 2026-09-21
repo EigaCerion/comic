@@ -6,6 +6,7 @@ import search from './search.js';
 import downloads from './downloads.js';
 import uploads from './uploads.js';
 import imports from './imports.js';
+import scout from './scout.js';
 import audit from './audit.js';
 import connect from './connect.js';
 import bookmarks from './bookmarks.js';
@@ -13,7 +14,7 @@ import stats from './stats.js';
 import auth from './auth.js';
 import users from './users.js';
 import interaksi from './interaksi.js';
-import { wajibKemampuan } from '../middleware/auth.js';
+import { wajibKemampuan, wajibLogin } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -43,14 +44,22 @@ router.get('/health', (_req, res) => {
 router.use('/comics', comics);
 router.use('/chapters', chapters);
 router.use('/search', search);
-router.use('/bookmarks', bookmarks);
-router.use('/stats', stats);
+// Bookmark adalah data pribadi. Tanpa penjagaan, terbukti lewat uji bahwa tamu
+// bisa POST (201) dan DELETE (200) bookmark milik orang lain — satu perulangan
+// cukup untuk menghapus semuanya tanpa meninggalkan jejak pelaku.
+router.use('/bookmarks', wajibLogin, bookmarks);
+
+// /stats menyisir seluruh folder komik (290 ribu berkas) dan pernah tidak
+// menjawab selama 91 detik. Terbuka untuk tamu, ia jadi tombol pemberat server
+// sekaligus membocorkan path absolut mesin dan versi Node.
+router.use('/stats', wajibLogin, stats);
 
 // Seluruhnya operasional: mengelola koleksi, mengantre unduhan, memeriksa
 // kelengkapan, dan melihat alamat jaringan. Dijaga di titik pemasangan supaya
 // tidak ada satu pun rute di dalamnya yang lolos karena kelupaan.
 router.use('/downloads', wajibKemampuan('kelola_koleksi'), downloads);
 router.use('/imports', wajibKemampuan('kelola_koleksi'), imports);
+router.use('/scout', wajibKemampuan('kelola_koleksi'), scout);
 router.use('/audit', wajibKemampuan('kelola_koleksi'), audit);
 router.use('/connect', wajibKemampuan('kelola_koleksi'), connect);
 router.use('/uploads', wajibKemampuan('unggah_chapter'), uploads);

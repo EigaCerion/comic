@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import asyncHandler from '../utils/asyncHandler.js';
-import { wajibKemampuan } from '../middleware/auth.js';
+import { wajibKemampuan, wajibLogin } from '../middleware/auth.js';
 import { badRequest, notFound, parsePositiveInt } from '../utils/validators.js';
 import comicService from '../services/comicService.js';
 import coverService from '../services/coverService.js';
@@ -30,7 +30,13 @@ router.get(
 router.get(
   '/continue',
   asyncHandler(async (req, res) => {
-    res.json({ items: comicService.continueReading(parsePositiveInt(req.query.limit, 8, { max: 24 })) });
+    // Tamu mendapat daftar kosong; riwayat baca terikat pemiliknya.
+    res.json({
+      items: comicService.continueReading(
+        parsePositiveInt(req.query.limit, 8, { max: 24 }),
+        req.user?.id ?? null,
+      ),
+    });
   }),
 );
 
@@ -50,15 +56,29 @@ router.get(
   asyncHandler(async (req, res) => {
     const comic = comicService.getComic(req.params.idOrSlug);
     if (!comic) throw notFound('Komik tidak ditemukan');
-    res.json({ items: chapterService.listChapters(comic.id, { order: req.query.order === 'desc' ? 'desc' : 'asc' }) });
+    // ?ringkas=1 — bentuk hemat untuk pemilih chapter di dalam reader, yang
+    // hanya butuh nomor, judul, dan status baca. Daftar di halaman detail tetap
+    // memakai bentuk lengkap karena ia menampilkan ukuran berkas dan sumbernya.
+    const ringkas = req.query.ringkas === '1' || req.query.ringkas === 'true';
+    const opsi = {
+      order: req.query.order === 'desc' ? 'desc' : 'asc',
+      userId: req.user?.id ?? null,
+    };
+    res.json({
+      items: ringkas
+        ? chapterService.listChapterRingkas(comic.id, opsi)
+        : chapterService.listChapters(comic.id, opsi),
+    });
   }),
 );
 
 // GET /api/comics/:id/progress
 router.get(
   '/:id/progress',
+  // Riwayat baca per komik adalah data pribadi — hanya pemiliknya yang berhak.
+  wajibLogin,
   asyncHandler(async (req, res) => {
-    res.json({ items: progressService.getComicProgress(Number(req.params.id)) });
+    res.json({ items: progressService.getComicProgress(Number(req.params.id), req.user.id) });
   }),
 );
 
@@ -118,6 +138,10 @@ router.post(
 // POST /api/comics/:id/favorite — toggle
 router.post(
   '/:id/favorite',
+  // Favorit menulis ke tabel comics lewat updateComic — jalur PATCH ke fungsi
+  // yang sama sudah dijaga `sunting_metadata`, jadi membiarkan pintu ini
+  // terbuka membuat penjagaan itu bisa dilewati.
+  wajibLogin,
   asyncHandler(async (req, res) => {
     res.json(comicService.toggleFavorite(Number(req.params.id)));
   }),

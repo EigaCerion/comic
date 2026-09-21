@@ -49,7 +49,13 @@ export const config = {
     format: process.env.IMAGE_FORMAT || 'webp',
     quality: num(process.env.IMAGE_QUALITY, 75),
     maxWidth: num(process.env.IMAGE_MAX_WIDTH, 1600),
-    maxHeight: num(process.env.IMAGE_MAX_HEIGHT, 2560),
+    // Batas tinggi BUKAN batas mutu. Dulu 2560, dan bersama fit:'inside' angka itu
+    // menggencet strip webtoon: gambar asli 800x8307 dari ngomik tersimpan 247x2560 —
+    // lebarnya ikut menyusut ke sepertiga, lalu dibentangkan reader hampir 4x sampai
+    // pecah. Komik dari komiku lolos hanya karena situsnya sudah memotong strip per
+    // 2500 px. Yang benar-benar membatasi adalah encoder, dan compressionService
+    // menjepit nilai ini ke batas format itu.
+    maxHeight: num(process.env.IMAGE_MAX_HEIGHT, 16383),
     concurrency: num(process.env.COMPRESSION_CONCURRENCY, 4),
     // effort & grayscale: diukur lewat `npm run bench:compress` — pada halaman
     // uji keduanya hanya menghemat 0,2-0,5pp tapi 2x lebih lambat, jadi default

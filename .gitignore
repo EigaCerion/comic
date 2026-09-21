@@ -14,10 +14,13 @@ coverage/
 # memuat IP lokal. Aplikasi membuat ulang folder ini sendiri saat pertama jalan.
 apps/api/data/
 apps/api/import/
-apps/api/logs/*.log
+apps/api/logs/
 
 # editor / OS
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Konfigurasi alat bantu lokal (dev server, dsb) — bukan bagian aplikasi.
+.claude/

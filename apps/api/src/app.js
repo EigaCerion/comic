@@ -31,9 +31,47 @@ export const createApp = () => {
       contentSecurityPolicy: false,
     }),
   );
-  // credentials: true wajib ada — tanpa itu cookie sesi tidak ikut terkirim
-  // saat frontend dijalankan dari dev server di port yang berbeda.
-  app.use(cors({ origin: true, credentials: true }));
+  /*
+   * CORS: hanya origin milik kita sendiri.
+   *
+   * Sebelumnya `origin: true` MEMANTULKAN origin apa pun sambil mengizinkan
+   * kredensial — terbukti lewat uji: permintaan ber-Origin situs asing dibalas
+   * `Access-Control-Allow-Origin: <situs asing>` + `Allow-Credentials: true`.
+   * Artinya situs web mana pun yang dibuka di perangkat pemilik bisa memanggil
+   * API ini DENGAN cookie sesinya ikut terkirim, lalu membaca balasannya.
+   *
+   * Dulu risikonya kecil karena aplikasi terkurung di Wi-Fi rumah. Sekarang ia
+   * punya nama tetap yang bisa dijangkau lintas jaringan, jadi sasarannya pasti
+   * dan serangan drive-by jadi masuk akal.
+   *
+   * Permintaan tanpa Origin (same-origin, curl, aplikasi HP) tetap dilayani —
+   * bukan browser lintas situs, jadi bukan sasaran serangan ini.
+   */
+  const originDiizinkan = (origin, callback) => {
+    if (!origin) return callback(null, true);
+    let host;
+    try {
+      host = new URL(origin).hostname.toLowerCase();
+    } catch {
+      return callback(null, false);
+    }
+    const boleh =
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host === '::1' ||
+      // LAN privat
+      /^192\.168\./.test(host) ||
+      /^10\./.test(host) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+      // Rentang Tailscale (CGNAT 100.64.0.0/10)
+      /^100\.(6[4-9]|[7-9]\d|1\d\d)\./.test(host) ||
+      // Nama tetap yang dikonfigurasi sendiri (mis. MagicDNS)
+      (process.env.NAMA_HOST && host === String(process.env.NAMA_HOST).toLowerCase()) ||
+      host.endsWith('.ts.net');
+    return callback(null, Boolean(boleh));
+  };
+
+  app.use(cors({ origin: originDiizinkan, credentials: true }));
   app.use(express.json({ limit: '2mb' }));
   app.use(express.urlencoded({ extended: true }));
 

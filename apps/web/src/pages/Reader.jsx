@@ -10,6 +10,7 @@ import {
 import { ErrorState, Spinner } from '../components/Common/index.jsx';
 import { ReaderHeader, ReaderFooter } from '../components/Reader/ReaderControls.jsx';
 import PageImage from '../components/Reader/PageImage.jsx';
+import ChapterPicker from '../components/Reader/ChapterPicker.jsx';
 import { setFit } from '../store/slices/readerSlice.js';
 import { showToast } from '../store/slices/uiSlice.js';
 import useKeyboardNav from '../hooks/useKeyboardNav.js';
@@ -34,6 +35,7 @@ export const Reader = () => {
   const [addBookmark, { isLoading: isBookmarking }] = useAddBookmarkMutation();
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [daftarTerbuka, setDaftarTerbuka] = useState(false);
   const containerRef = useRef(null);
   const pageRefs = useRef(new Map());
   const totalPages = chapter?.pages?.length ?? 0;
@@ -176,13 +178,16 @@ export const Reader = () => {
       last: () => (mode === 'scroll' ? scrollToPage(totalPages) : setCurrentPage(totalPages)),
       prevChapter: () => goToChapter(chapter?.prev),
       nextChapter: () => goToChapter(chapter?.next),
+      chapterList: () => setDaftarTerbuka(true),
       toggleFit: () => dispatch(setFit(FIT_CYCLE[(FIT_CYCLE.indexOf(fit) + 1) % FIT_CYCLE.length])),
       exit: () => navigate(chapter ? `/comic/${chapter.comic.slug}` : '/'),
     }),
     [chapter, dispatch, fit, goToChapter, mode, navigate, next, prev, scrollToPage, totalPages],
   );
 
-  useKeyboardNav(handlers);
+  // Pintasan reader dimatikan selama pemilih chapter terbuka: panel itu punya
+  // kotak pencarian dan daftarnya sendiri yang perlu tombol panah dan Escape.
+  useKeyboardNav(handlers, !daftarTerbuka);
 
   const bookmark = async () => {
     if (!chapter) return;
@@ -206,7 +211,11 @@ export const Reader = () => {
 
   return (
     <div className="fixed inset-0 z-30 flex h-[100dvh] flex-col bg-[var(--reader-bg)]">
-      <ReaderHeader chapter={chapter} comic={chapter.comic} />
+      <ReaderHeader
+        chapter={chapter}
+        comic={chapter.comic}
+        onBukaDaftar={() => setDaftarTerbuka(true)}
+      />
 
       {/* Garis tipis saat chapter berganti: perpindahan terasa direspons,
           bukan diam sambil menampilkan isi lama. */}
@@ -258,13 +267,27 @@ export const Reader = () => {
       <ReaderFooter
         currentPage={currentPage}
         totalPages={totalPages}
+        chapterNumber={chapter.number}
         onPrev={prev}
         onNext={next}
         onBookmark={bookmark}
+        onBukaDaftar={() => setDaftarTerbuka(true)}
         isBookmarking={isBookmarking}
         prevChapterTo={chapter.prev ? `/read/${chapter.prev.id}` : null}
         nextChapterTo={chapter.next ? `/read/${chapter.next.id}` : null}
       />
+
+      {daftarTerbuka && (
+        <ChapterPicker
+          comicId={chapter.comicId}
+          chapterAktifId={chapter.id}
+          onPilih={(id) => {
+            setDaftarTerbuka(false);
+            if (id !== chapter.id) navigate(`/read/${id}`);
+          }}
+          onClose={() => setDaftarTerbuka(false)}
+        />
+      )}
     </div>
   );
 };

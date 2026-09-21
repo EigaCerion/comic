@@ -4,7 +4,6 @@
 // perintah perbaikannya, dan tidak ada satu pun yang mengubah setelan sistem.
 import fs from 'node:fs';
 import http from 'node:http';
-import os from 'node:os';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';

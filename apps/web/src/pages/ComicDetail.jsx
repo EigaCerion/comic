@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import {
+  useDeleteChapterMutation,
   useDeleteComicMutation,
   useEnqueueDownloadMutation,
+  useGantiChapterMutation,
   useGetChaptersQuery,
   useGetComicQuery,
   useSetCoverFromPageMutation,
@@ -113,6 +115,106 @@ const DownloadForm = ({ comicId, onDone }) => {
   );
 };
 
+/**
+ * Ganti isi satu chapter yang gambarnya rusak dari sumber aslinya — terpotong,
+ * bolong, atau ternyata chapter lain. Beda dengan DownloadForm: yang diunduh
+ * ulang adalah baris chapter yang SAMA, jadi posisi baca dan bookmark yang
+ * menunjuk ke chapter ini tidak ikut lenyap seperti kalau dihapus lalu
+ * ditambahkan lagi.
+ */
+const GantiChapterForm = ({ chapter, onDone }) => {
+  const dispatch = useDispatch();
+  const [gantiChapter, { isLoading }] = useGantiChapterMutation();
+  const [form, setForm] = useState({ chapterUrl: '', urls: '' });
+  const nomor = formatChapterNumber(chapter.number);
+
+  const submit = async (event) => {
+    event.preventDefault();
+    const chapterUrl = form.chapterUrl.trim();
+    const imageUrls = form.urls
+      .split(/\s+/)
+      .map((url) => url.trim())
+      .filter(Boolean);
+
+    if (!chapterUrl && imageUrls.length === 0) {
+      dispatch(showToast({ type: 'error', message: 'Isi URL halaman chapter atau daftar URL gambar' }));
+      return;
+    }
+
+    try {
+      await gantiChapter({ chapterId: chapter.id, chapterUrl, imageUrls }).unwrap();
+      dispatch(showToast({ message: `Chapter ${nomor} masuk antrian unduh ulang` }));
+      onDone?.();
+    } catch (error) {
+      dispatch(showToast({ type: 'error', message: error?.data?.error ?? 'Gagal mengganti chapter' }));
+    }
+  };
+
+  return (
+    <form
+      id={`ganti-chapter-${chapter.id}`}
+      onSubmit={submit}
+      className="space-y-3 border-t border-paper-line px-4 py-4 dark:border-night-line"
+    >
+      <p className="text-sm font-bold">Ganti isi Chapter {nomor}</p>
+      <p className="text-xs leading-relaxed text-night/50 dark:text-paper/50">
+        Chapter ini diunduh ulang ke tempat yang sama dan halaman lamanya tidak dipakai lagi.{' '}
+        <b>Posisi baca dan bookmark tetap aman.</b> Isi <b>salah satu</b>: URL halaman chapter dari
+        situs lain, atau daftar URL gambar kalau halamannya tidak bisa dibaca. Pastikan itu chapter
+        yang sama — penomoran antar situs tidak selalu cocok. Semua URL divalidasi terhadap allowlist
+        domain di <code>.env</code>.
+      </p>
+
+      {/* Gambar bisa rusak di pihak kita, bukan di sumbernya — tinggi strip
+          yang dipangkas saat diproses, misalnya. Untuk itu cukup unduh ulang
+          dari tautan yang sama, jadi tautannya ditawarkan untuk dipakai lagi. */}
+      {chapter.sourceUrl && (
+        <p className="text-[11px] text-night/50 dark:text-paper/50">
+          Sumber sekarang: <span className="break-all font-mono">{chapter.sourceUrl}</span>{' '}
+          <button
+            type="button"
+            className="font-semibold underline hover:text-naruto"
+            onClick={() => setForm({ ...form, chapterUrl: chapter.sourceUrl })}
+          >
+            pakai lagi
+          </button>
+        </p>
+      )}
+
+      <label className="block">
+        <span className="mb-1 block text-xs font-semibold uppercase opacity-60">URL halaman chapter</span>
+        <input
+          className="input font-mono text-xs"
+          placeholder="https://situs-lain.com/judul-chapter-12/"
+          value={form.chapterUrl}
+          onChange={(event) => setForm({ ...form, chapterUrl: event.target.value })}
+        />
+      </label>
+
+      <label className="block">
+        <span className="mb-1 block text-xs font-semibold uppercase opacity-60">
+          atau URL gambar (satu per baris)
+        </span>
+        <textarea
+          className="input h-28 font-mono text-xs"
+          placeholder={'https://contoh.com/ch12/001.jpg\nhttps://contoh.com/ch12/002.jpg'}
+          value={form.urls}
+          onChange={(event) => setForm({ ...form, urls: event.target.value })}
+        />
+      </label>
+
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" className="btn-primary" disabled={isLoading}>
+          {isLoading ? 'Mengantrekan…' : 'Ganti chapter'}
+        </button>
+        <button type="button" className="btn-ghost" onClick={onDone}>
+          Batal
+        </button>
+      </div>
+    </form>
+  );
+};
+
 const STATUSES = ['Ongoing', 'Completed', 'Hiatus'];
 
 const Field = ({ label, hint, children }) => (
@@ -218,6 +320,11 @@ export const ComicDetail = () => {
   const [order, setOrder] = useState('asc');
   const [showDownloadForm, setShowDownloadForm] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  // Satu formulir Ganti terbuka sekaligus: daftar chapter bisa ratusan baris,
+  // dan dua formulir terbuka berjauhan mudah membuat URL masuk ke chapter yang
+  // salah.
+  const [chapterDiganti, setChapterDiganti] = useState(null);
+  const [sedangHapus, setSedangHapus] = useState(null);
 
   const comicQuery = useGetComicQuery(slug);
   const comic = comicQuery.data;
@@ -233,6 +340,7 @@ export const ComicDetail = () => {
   const [setCoverFromPage, { isLoading: isMakingCover }] = useSetCoverFromPageMutation();
   const [auditComic, { isLoading: isAuditing }] = useAuditComicMutation();
   const [resyncComic, { isLoading: isResyncing }] = useResyncComicMutation();
+  const [deleteChapter] = useDeleteChapterMutation();
 
   const periksaKelengkapan = async () => {
     try {
@@ -313,6 +421,33 @@ export const ComicDetail = () => {
       dispatch(showToast({ type: 'error', message: error?.data?.error ?? 'Gagal menghapus komik' }));
     }
   };
+
+  const hapusChapter = async (chapter) => {
+    const nama = `Chapter ${formatChapterNumber(chapter.number)}`;
+    // Pesannya menyebut apa saja yang ikut lenyap karena server menghapusnya
+    // lewat ON DELETE CASCADE, termasuk milik akun lain — dan menunjuk ke Ganti,
+    // yang biasanya memang yang dicari orang yang gambarnya rusak.
+    const yakin = window.confirm(
+      `Hapus ${nama} dari "${comic.title}"?\n\n` +
+        'Berkas gambarnya, posisi baca, dan bookmark di chapter ini ikut terhapus permanen, ' +
+        'termasuk milik akun lain. Tindakan ini tidak bisa dibatalkan.\n\n' +
+        'Kalau hanya gambarnya yang rusak, pakai "Ganti" — posisi baca dan bookmark tetap aman.',
+    );
+    if (!yakin) return;
+
+    setSedangHapus(chapter.id);
+    try {
+      await deleteChapter(chapter.id).unwrap();
+      setChapterDiganti((terbuka) => (terbuka === chapter.id ? null : terbuka));
+      dispatch(showToast({ message: `${nama} dihapus` }));
+    } catch (error) {
+      dispatch(showToast({ type: 'error', message: error?.data?.error ?? 'Gagal menghapus chapter' }));
+    } finally {
+      setSedangHapus(null);
+    }
+  };
+
+  const kelola = bisa('kelola_koleksi');
 
   return (
     <div>
@@ -450,34 +585,68 @@ export const ComicDetail = () => {
             const disabled = !chapter.isDownloaded || chapter.totalPages === 0;
             const Wrapper = disabled ? 'div' : Link;
             const wrapperProps = disabled ? {} : { to: `/read/${chapter.id}` };
+            const nomor = formatChapterNumber(chapter.number);
+            const formTerbuka = chapterDiganti === chapter.id;
 
             return (
-              <li key={chapter.id}>
-                <Wrapper
-                  {...wrapperProps}
-                  className={`card flex items-center gap-4 px-4 py-3 ${
-                    disabled ? 'opacity-60' : 'hover:shadow-scroll'
-                  }`}
-                >
-                  <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-leaf/10 text-sm font-bold">
-                    {formatChapterNumber(chapter.number)}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">
-                      {chapter.title || `Chapter ${formatChapterNumber(chapter.number)}`}
-                    </p>
-                    <p className="text-xs text-night/50 dark:text-paper/50">
-                      {chapter.isDownloaded
-                        ? `${chapter.totalPages} halaman · ${formatBytes(chapter.fileSize)}`
-                        : 'Belum diunduh'}
-                      {chapter.readAt && ` · dibaca ${formatRelativeTime(chapter.readAt)}`}
-                    </p>
-                    {chapter.progressPercentage > 0 && (
-                      <ProgressBar value={chapter.progressPercentage} className="mt-2" />
-                    )}
-                  </div>
-                  <span className="flex-none text-xs opacity-60">{disabled ? '⏳' : '›'}</span>
-                </Wrapper>
+              <li key={chapter.id} className={`card ${disabled ? '' : 'hover:shadow-scroll'}`}>
+                {/* Tombol kelola duduk di SAMPING tautan, bukan di dalamnya:
+                    <button> di dalam <a> bukan HTML sah, dan kliknya ikut
+                    membuka reader. Opacity chapter yang belum siap juga hanya
+                    mengenai tautannya — chapter gagal unduh justru yang paling
+                    sering perlu diganti, tombolnya tidak boleh ikut pudar. */}
+                <div className="flex items-center">
+                  <Wrapper
+                    {...wrapperProps}
+                    className={`flex min-w-0 flex-1 items-center gap-3 px-3 py-3 sm:gap-4 sm:px-4 ${
+                      disabled ? 'opacity-60' : ''
+                    }`}
+                  >
+                    <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-leaf/10 text-sm font-bold">
+                      {nomor}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{chapter.title || `Chapter ${nomor}`}</p>
+                      <p className="text-xs text-night/50 dark:text-paper/50">
+                        {chapter.isDownloaded
+                          ? `${chapter.totalPages} halaman · ${formatBytes(chapter.fileSize)}`
+                          : 'Belum diunduh'}
+                        {chapter.readAt && ` · dibaca ${formatRelativeTime(chapter.readAt)}`}
+                      </p>
+                      {chapter.progressPercentage > 0 && (
+                        <ProgressBar value={chapter.progressPercentage} className="mt-2" />
+                      )}
+                    </div>
+                    <span className="flex-none text-xs opacity-60">{disabled ? '⏳' : '›'}</span>
+                  </Wrapper>
+
+                  {kelola && (
+                    <div className="flex flex-none items-center gap-1 pr-3 sm:pr-4">
+                      <button
+                        type="button"
+                        className={`btn-ghost px-2 py-1 text-xs ${formTerbuka ? 'border-naruto/50 text-naruto' : ''}`}
+                        onClick={() => setChapterDiganti(formTerbuka ? null : chapter.id)}
+                        aria-expanded={formTerbuka}
+                        aria-controls={`ganti-chapter-${chapter.id}`}
+                        aria-label={`Ganti chapter ${nomor}`}
+                        title="Unduh ulang dari tautan lain"
+                      >
+                        Ganti
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-ghost px-2 py-1 text-xs text-danger"
+                        onClick={() => hapusChapter(chapter)}
+                        disabled={sedangHapus === chapter.id}
+                        aria-label={`Hapus chapter ${nomor}`}
+                      >
+                        {sedangHapus === chapter.id ? 'Menghapus…' : 'Hapus'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {formTerbuka && <GantiChapterForm chapter={chapter} onDone={() => setChapterDiganti(null)} />}
               </li>
             );
           })}

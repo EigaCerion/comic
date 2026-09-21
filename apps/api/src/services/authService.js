@@ -94,6 +94,13 @@ export const bentukUser = (row) =>
       }
     : null;
 
+/*
+ * Hash tetap untuk menyamakan waktu balasan saat username tidak ditemukan.
+ * Dihitung sekali saat modul dimuat — bukan tiap permintaan — supaya jalur
+ * "username tidak ada" memakan waktu yang sama dengan "sandi salah".
+ */
+const HASH_PEMBANDING = hashSandi('pembanding-waktu-tetap');
+
 // ── Sesi ──────────────────────────────────────────────────────────────
 
 const HARI = 24 * 60 * 60 * 1000;
@@ -152,9 +159,20 @@ export const login = ({ username, password, userAgent }) => {
   // memberi tahu penebak bahwa sebuah username memang ada.
   const gagal = badRequest('Username atau kata sandi salah');
   if (!row) {
-    // Tetap jalankan hashing sekali supaya lama balasan tidak membocorkan
-    // apakah username-nya ada.
-    cocokSandi(String(password ?? ''), hashSandi('pembanding'));
+    /*
+     * Satu panggilan scrypt — PERSIS sama seperti jalur username yang ada.
+     *
+     * Versi sebelumnya memanggil hashSandi() lalu cocokSandi(), yaitu DUA
+     * scrypt, sementara jalur username yang ada hanya satu. Hasilnya justru
+     * kebalikan dari maksudnya: terukur 0,150 detik untuk username yang tidak
+     * ada versus 0,079 detik untuk yang ada — selisih dua kali lipat yang
+     * konsisten, cukup untuk menebak username mana yang terdaftar hanya dengan
+     * mengukur waktu balasan.
+     *
+     * HASH_PEMBANDING dihitung sekali saat modul dimuat, jadi biayanya di sini
+     * tinggal satu verifikasi yang pasti gagal.
+     */
+    cocokSandi(String(password ?? ''), HASH_PEMBANDING);
     throw gagal;
   }
   if (!row.is_active) throw badRequest('Akun ini dinonaktifkan');

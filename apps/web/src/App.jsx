@@ -9,6 +9,7 @@ import Reader from './pages/Reader.jsx';
 import Downloads from './pages/Downloads.jsx';
 import Upload from './pages/Upload.jsx';
 import Import from './pages/Import.jsx';
+import Scout from './pages/Scout.jsx';
 import Settings from './pages/Settings.jsx';
 import Login from './pages/Login.jsx';
 import Users from './pages/Users.jsx';
@@ -36,6 +37,7 @@ export const App = () => {
         <Route path="/downloads" element={<Downloads />} />
         <Route path="/upload" element={<Upload />} />
         <Route path="/import" element={<Import />} />
+        <Route path="/scout" element={<Scout />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/login" element={<Login />} />
         <Route path="/users" element={<Users />} />

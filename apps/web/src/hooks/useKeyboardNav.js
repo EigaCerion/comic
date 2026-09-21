@@ -2,11 +2,17 @@ import { useEffect } from 'react';
 
 /**
  * Keyboard shortcut reader: ← → (halaman), space/shift+space, home/end,
- * [ ] (chapter), f (fit), Escape (keluar).
+ * [ ] (chapter), c (daftar chapter), f (fit), Escape (keluar).
  * Diabaikan saat fokus ada di input supaya tidak bentrok dengan form.
+ *
+ * `aktif` dipakai saat ada panel yang menutupi reader. Tanpa itu, panah di
+ * dalam panel pemilih chapter ikut menggeser halaman di belakangnya dan Escape
+ * menutup reader sekaligus panelnya.
  */
-export const useKeyboardNav = (handlers) => {
+export const useKeyboardNav = (handlers, aktif = true) => {
   useEffect(() => {
+    if (!aktif) return undefined;
+
     const onKeyDown = (event) => {
       const tag = event.target?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || event.target?.isContentEditable) return;
@@ -22,6 +28,8 @@ export const useKeyboardNav = (handlers) => {
         End: handlers.last,
         '[': handlers.prevChapter,
         ']': handlers.nextChapter,
+        c: handlers.chapterList,
+        C: handlers.chapterList,
         f: handlers.toggleFit,
         Escape: handlers.exit,
       };
@@ -44,7 +52,7 @@ export const useKeyboardNav = (handlers) => {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handlers]);
+  }, [handlers, aktif]);
 };
 
 export default useKeyboardNav;

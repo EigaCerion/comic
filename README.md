@@ -355,7 +355,7 @@ naruread-app/
 - Progress baca tersimpan otomatis (debounce 800ms) dan dilanjutkan saat chapter dibuka lagi
 - Download manager: antrian berbasis SQLite, worker concurrency, progress per job,
   retry otomatis (3 attempt), jeda/lanjut/bersihkan, pemulihan job setelah crash
-- Pipeline kompresi Sharp: WebP q75, maksimum 1600×2560, EXIF dibuang
+- Pipeline kompresi Sharp: WebP q75, lebar maksimum 1600 px, tinggi tidak dipotong (strip webtoon tetap utuh), EXIF dibuang
   (terukur **±78% lebih kecil** pada data uji — target dokumentasi 70–80%)
 
 **Week 4 — Upload Manual & Polish**
@@ -470,7 +470,7 @@ Kesimpulannya: **menaikkan effort atau memaksa grayscale tidak layak** — hemat
   `IMAGE_CONCURRENCY=4` dengan `IMAGE_REQUEST_DELAY_MS=150`, bukan satu per satu
   tiap 750ms. Unduhan dan kompresi juga saling menumpuk (halaman berikutnya
   diunduh sementara yang sekarang dikompresi).
-- Resolusi tetap 1600×2560 dan kualitas tetap 75 — jadi "HD" tidak berubah;
+- Batas lebar tetap 1600 px dan kualitas tetap 75 — jadi "HD" tidak berubah;
   yang berubah hanya berapa lama sampainya.
 
 Etika & keamanan permintaan keluar:
@@ -580,7 +580,7 @@ Lihat [.env.example](.env.example). Yang paling sering diubah:
 | `API_PORT`               | 3000    | dibaca lebih dulu daripada `PORT`                    |
 | `DATA_DIR`               | ./data  | boleh absolute, mis. `D:/NaruReaderData`             |
 | `IMAGE_QUALITY`          | 75      | naikkan kalau ingin kualitas lebih tinggi            |
-| `IMAGE_MAX_WIDTH/HEIGHT` | 1600 / 2560 | batas resolusi HD                                |
+| `IMAGE_MAX_WIDTH/HEIGHT` | 1600 / 16383 | lebar HD; tinggi hanya pengaman encoder WebP — jangan diturunkan, strip webtoon ikut tergencet |
 | `COMPRESSION_CONCURRENCY`| 4       | turunkan ke 2 di laptop 8GB RAM                      |
 | `DOWNLOAD_CONCURRENCY`   | 2       | job download paralel                                 |
 | `ALLOWED_SOURCE_DOMAINS` | 6 domain | allowlist sumber download                           |

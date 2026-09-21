@@ -125,6 +125,21 @@ export const hostPublik = (hostname) => {
   return true; // nama domain biasa
 };
 
+/**
+ * Domain allowlist yang menaungi sebuah URL: "https://02.ngomik.cc/manga/x/"
+ * menjadi "ngomik.cc". Situs sumber rutin berpindah subdomain, jadi dua URL
+ * dianggap situs yang sama kalau domain induknya sama — bukan hostname utuhnya.
+ */
+export const domainSumber = (url) => {
+  let host;
+  try {
+    host = new URL(String(url)).hostname.toLowerCase().replace(/^www\./, '');
+  } catch {
+    return null;
+  }
+  return config.allowedSourceDomains.find((domain) => host === domain || host.endsWith(`.${domain}`)) ?? host;
+};
+
 export const sanitizeSourceUrl = (url, { anyPublicHost = false } = {}) => {
   let parsed;
   try {

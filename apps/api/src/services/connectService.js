@@ -54,9 +54,6 @@ const jalankan = promisify(execFile);
 const POLA_VPN_KORPORAT = /pangp|globalprotect|openvpn|anyconnect|forticlient|nordlynx|expressvpn/i;
 const POLA_OVERLAY = /tailscale|zerotier|wireguard|wintun|\btun\b|tap-/i;
 
-// Dipertahankan untuk pemanggil lama: keduanya sama-sama "bukan adapter fisik".
-const POLA_VPN = new RegExp(`${POLA_VPN_KORPORAT.source}|${POLA_OVERLAY.source}`, 'i');
-
 let cacheAdapter = null;
 
 /** Satu kali pemindaian adapter, dipilah jadi dua kategori yang berlawanan. */
@@ -94,12 +91,6 @@ const klasifikasiAdapter = async () => {
   }
   return cacheAdapter;
 };
-
-/** Adapter yang TIDAK boleh dipakai menyajikan aplikasi (VPN korporat). */
-export const namaAdapterVpn = async () => (await klasifikasiAdapter()).korporat;
-
-/** Adapter overlay mesh — justru inilah alamat yang tahan pindah jaringan. */
-export const namaAdapterOverlay = async () => (await klasifikasiAdapter()).overlay;
 
 /**
  * Alamat yang benar-benar dipakai mesin ini untuk keluar ke jaringan.

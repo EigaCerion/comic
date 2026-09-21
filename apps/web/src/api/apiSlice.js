@@ -19,6 +19,7 @@ export const api = createApi({
     'Genres',
     'ImportScan',
     'ImportJobs',
+    'Scout',
     'Audit',
     'Auth',
     'Users',
@@ -43,7 +44,12 @@ export const api = createApi({
       providesTags: (result, error, arg) => [{ type: 'Comic', id: arg }],
     }),
     getChapters: builder.query({
-      query: ({ comicId, order = 'asc' }) => ({ url: `/comics/${comicId}/chapters`, params: { order } }),
+      // ringkas: bentuk hemat tanpa slug/sumber/ukuran berkas — dipakai pemilih
+      // chapter di reader, yang bisa memuat ratusan baris sekaligus.
+      query: ({ comicId, order = 'asc', ringkas = false }) => ({
+        url: `/comics/${comicId}/chapters`,
+        params: ringkas ? { order, ringkas: 1 } : { order },
+      }),
       providesTags: (result, error, arg) => [{ type: 'Chapters', id: arg.comicId }],
     }),
     toggleFavorite: builder.mutation({
@@ -83,9 +89,27 @@ export const api = createApi({
         body: { last_page_read: lastPageRead },
       }),
     }),
+    // Server ikut menghapus posisi baca, bookmark, dan job antrian chapter ini
+    // lewat ON DELETE CASCADE. Tanpa 'Bookmarks' dan 'Downloads' di sini, daftar
+    // bookmark masih menawarkan tautan ke chapter yang sudah tidak ada; tanpa
+    // 'Comic', chip "N chapter" di halaman detail tetap menyebut angka lama.
     deleteChapter: builder.mutation({
       query: (chapterId) => ({ url: `/chapters/${chapterId}`, method: 'DELETE' }),
-      invalidatesTags: ['Comics', 'Chapters', 'Stats'],
+      invalidatesTags: ['Comic', 'Comics', 'Chapters', 'Stats', 'Bookmarks', 'Downloads'],
+    }),
+    // Unduh ulang ke baris chapter yang SAMA. Halaman barunya baru ada setelah
+    // worker selesai, tapi tautan sumber chapter bisa langsung berubah dan job
+    // barunya langsung tampil di antrian — dua itu yang perlu segar sekarang.
+    gantiChapter: builder.mutation({
+      query: ({ chapterId, chapterUrl, imageUrls }) => ({
+        url: `/chapters/${chapterId}/ganti`,
+        method: 'POST',
+        body: {
+          ...(chapterUrl ? { chapter_url: chapterUrl } : {}),
+          ...(imageUrls?.length ? { image_urls: imageUrls } : {}),
+        },
+      }),
+      invalidatesTags: (_r, _e, { chapterId }) => [{ type: 'Chapter', id: chapterId }, 'Chapters', 'Downloads'],
     }),
 
     // ── Search ──────────────────────────────────────────────────────
@@ -166,6 +190,48 @@ export const api = createApi({
     importFromUrl: builder.mutation({
       query: (body) => ({ url: '/imports/url', method: 'POST', body }),
       invalidatesTags: ['Comics', 'Chapters', 'Downloads', 'Genres'],
+    }),
+
+    // ── Scout (etalase situs sumber) ────────────────────────────────
+    getScout: builder.query({
+      query: (params = {}) => ({ url: '/scout', params }),
+      providesTags: ['Scout'],
+    }),
+    // Balasan POST ini bentuknya sama dengan GET, tapi sengaja dibuang dan
+    // diganti refetch lewat tag: halaman memegang satu entri cache per bagian,
+    // dan menulis hasil refresh ke salah satunya saja membuat bagian lain basi
+    // tanpa ada yang memberi tahu.
+    refreshScout: builder.mutation({
+      query: () => ({ url: '/scout/refresh', method: 'POST', body: {} }),
+      invalidatesTags: ['Scout'],
+    }),
+    // Sama seperti import dari URL, ini melahirkan komik dan mengantre chapter
+    // sekaligus — jadi rak, daftar chapter, dan antrian unduhan ikut berubah.
+    importScoutItem: builder.mutation({
+      query: ({ id, hanyaBaru = false }) => ({
+        url: `/scout/${id}/import`,
+        method: 'POST',
+        body: hanyaBaru ? { hanyaBaru: true } : {},
+      }),
+      invalidatesTags: ['Scout', 'Comics', 'Chapters', 'Downloads', 'Genres'],
+    }),
+    // Sengaja tanpa providesTags. Tag 'Scout' dibatalkan oleh setiap Segarkan
+    // dan setiap impor; kalau hasil cari ikut memegangnya, kotak hasil akan
+    // menembak ulang situs sumber tanpa ada yang menekan Cari — dan tiap
+    // tembakan memakan jatah 20 pencarian per menit milik akun ini. Kartu yang
+    // baru diimpor dari sini ditandai "sudah diantre" oleh halamannya sendiri.
+    cariScout: builder.query({
+      query: (q) => ({ url: '/scout/cari', params: { q } }),
+    }),
+    // Kembaran importScoutItem untuk kartu hasil cari: kartu itu tidak punya
+    // baris scout_items, jadi yang dirujuk adalah URL serinya, bukan id.
+    imporScoutUrl: builder.mutation({
+      query: ({ seriesUrl, hanyaBaru = false }) => ({
+        url: '/scout/impor-url',
+        method: 'POST',
+        body: hanyaBaru ? { seriesUrl, hanyaBaru: true } : { seriesUrl },
+      }),
+      invalidatesTags: ['Scout', 'Comics', 'Chapters', 'Downloads', 'Genres'],
     }),
 
     // ── Sambungkan perangkat ────────────────────────────────────────
@@ -322,6 +388,7 @@ export const {
   useGetChapterQuery,
   useSaveProgressMutation,
   useDeleteChapterMutation,
+  useGantiChapterMutation,
   useSearchQuery,
   useGetGenresQuery,
   useGetDownloadsQuery,
@@ -341,6 +408,11 @@ export const {
   usePreviewSeriesMutation,
   usePreviewChapterUrlMutation,
   useImportFromUrlMutation,
+  useGetScoutQuery,
+  useRefreshScoutMutation,
+  useImportScoutItemMutation,
+  useLazyCariScoutQuery,
+  useImporScoutUrlMutation,
   useGetConnectQuery,
   useGetAuditQuery,
   useAuditComicMutation,

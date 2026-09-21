@@ -59,8 +59,51 @@ export const resetGagal = (req) => {
 };
 
 /** Menolak lebih awal kalau kunci ini sedang dalam masa tunggu. */
+/*
+ * Ember kedua: dikunci HANYA pada alamat, apa pun username-nya.
+ *
+ * Ember pertama memakai kunci `ip|username`, jadi cukup memutar username acak
+ * untuk tidak pernah menyentuh batas — dan setiap percobaan tetap membakar CPU
+ * karena scrypt sengaja lambat. Ini menutup celah itu: berapa pun username yang
+ * dicoba, satu alamat punya jatah percobaan autentikasi yang terbatas.
+ */
+const perAlamat = new Map(); // ip -> { jumlah, mulai }
+const MAKS_PER_ALAMAT = 20;
+const JENDELA_ALAMAT_MS = 10 * 60 * 1000;
+
+const alamatDari = (req) => req.ip || req.socket?.remoteAddress || 'tak-dikenal';
+
+const lewatiBatasAlamat = (req) => {
+  const ip = alamatDari(req);
+  const sekarang = Date.now();
+  const data = perAlamat.get(ip);
+
+  if (!data || sekarang - data.mulai > JENDELA_ALAMAT_MS) {
+    perAlamat.set(ip, { jumlah: 1, mulai: sekarang });
+    return null;
+  }
+  if (data.jumlah >= MAKS_PER_ALAMAT) {
+    return Math.ceil((data.mulai + JENDELA_ALAMAT_MS - sekarang) / 1000);
+  }
+  data.jumlah += 1;
+  return null;
+};
+
 export const batasiLogin = (req, _res, next) => {
   if (percobaan.size > 500) bersihkan();
+  if (perAlamat.size > 500) {
+    const batas = Date.now() - JENDELA_ALAMAT_MS;
+    for (const [ip, d] of perAlamat) if (d.mulai < batas) perAlamat.delete(ip);
+  }
+
+  // Diperiksa LEBIH DULU: menolak di sini berarti scrypt tidak pernah jalan,
+  // sehingga membanjiri login tidak lagi bisa menghabiskan CPU server.
+  const tungguAlamat = lewatiBatasAlamat(req);
+  if (tungguAlamat !== null) {
+    return next(
+      new HttpError(429, `Terlalu banyak percobaan dari perangkat ini. Coba lagi dalam ${tungguAlamat} detik.`),
+    );
+  }
 
   const data = percobaan.get(kunciDari(req));
   if (data && data.sampai > Date.now()) {

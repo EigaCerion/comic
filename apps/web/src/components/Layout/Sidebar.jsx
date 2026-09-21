@@ -10,6 +10,7 @@ const NAV = [
   { to: '/browse', label: 'Jelajahi', icon: '🗺️' },
   { to: '/browse?favorite=true', label: 'Favorit', icon: '⭐' },
   { to: '/downloads', label: 'Unduhan', icon: '📥', badge: 'downloads', butuh: 'kelola_koleksi' },
+  { to: '/scout', label: 'Scout', icon: '🔭', butuh: 'kelola_koleksi' },
   { to: '/import', label: 'Import', icon: '📦', butuh: 'kelola_koleksi' },
   { to: '/upload', label: 'Upload Manual', icon: '📤', butuh: 'unggah_chapter' },
   { to: '/users', label: 'Kelola Akun', icon: '👥', butuh: 'kelola_pengguna' },

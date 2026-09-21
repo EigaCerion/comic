@@ -26,21 +26,72 @@ export const shapeChapter = (row, comicSlug) => {
 };
 
 /** Daftar chapter satu komik, plus progress baca per chapter. */
-export const listChapters = (comicId, { order = 'asc' } = {}) => {
+export const listChapters = (comicId, { order = 'asc', userId = null } = {}) => {
+  const comic = getComic(comicId);
+  if (!comic) throw notFound('Komik tidak ditemukan');
+
+  /*
+   * Join progres DISARING pemilik — dua alasan, keduanya penting.
+   *
+   * Privasi: tanpa penyaring, satu akun melihat posisi baca akun lain.
+   * Kebenaran: sejak tiap pemilik punya barisnya sendiri, LEFT JOIN tanpa
+   * penyaring akan MENGGANDAKAN baris chapter — satu chapter muncul sebanyak
+   * jumlah orang yang pernah membacanya.
+   *
+   * Untuk tamu (userId null) perbandingan dengan NULL tidak pernah benar, jadi
+   * chapter tetap tampil lengkap dengan kolom progres kosong. Itu yang
+   * diinginkan: membaca bebas tanpa akun, tapi tanpa riwayat pribadi.
+   */
+  const rows = getDb()
+    .prepare(
+      `SELECT ch.*, rp.last_page_read, rp.progress_percentage, rp.read_at
+         FROM chapters ch
+         LEFT JOIN reading_progress rp ON rp.chapter_id = ch.id AND rp.user_id = ?
+        WHERE ch.comic_id = ?
+        ORDER BY ch.chapter_number ${order === 'desc' ? 'DESC' : 'ASC'}`,
+    )
+    .all(userId, comic.id);
+
+  return rows.map((row) => shapeChapter(row, comic.slug));
+};
+
+/**
+ * Versi ringkas daftar chapter — hanya kolom yang dipakai pemilih chapter.
+ *
+ * Koleksi ini punya komik dengan 776 chapter. Bentuk lengkapnya 264 KB sekali
+ * kirim, padahal pemilih chapter tidak pernah menyentuh source_url, slug,
+ * ukuran berkas, maupun tanggal unduh. Dipangkas ke kolom yang benar-benar
+ * dipakai, sisanya 108 KB — selisih yang terasa saat dibuka dari HP lewat
+ * jaringan luar, dan pemilih ini dibuka justru di tengah membaca.
+ *
+ * Penyaring pemilik pada join progres sama pentingnya seperti di listChapters:
+ * tanpa itu satu chapter muncul berkali-kali, sebanyak orang yang membacanya.
+ */
+export const listChapterRingkas = (comicId, { order = 'asc', userId = null } = {}) => {
   const comic = getComic(comicId);
   if (!comic) throw notFound('Komik tidak ditemukan');
 
   const rows = getDb()
     .prepare(
-      `SELECT ch.*, rp.last_page_read, rp.progress_percentage, rp.read_at
+      `SELECT ch.id, ch.chapter_number, ch.chapter_title, ch.total_pages, ch.is_downloaded,
+              rp.last_page_read, rp.progress_percentage, rp.read_at
          FROM chapters ch
-         LEFT JOIN reading_progress rp ON rp.chapter_id = ch.id
+         LEFT JOIN reading_progress rp ON rp.chapter_id = ch.id AND rp.user_id = ?
         WHERE ch.comic_id = ?
         ORDER BY ch.chapter_number ${order === 'desc' ? 'DESC' : 'ASC'}`,
     )
-    .all(comic.id);
+    .all(userId, comic.id);
 
-  return rows.map((row) => shapeChapter(row, comic.slug));
+  return rows.map((row) => ({
+    id: row.id,
+    number: row.chapter_number,
+    title: row.chapter_title,
+    totalPages: row.total_pages ?? 0,
+    isDownloaded: Boolean(row.is_downloaded),
+    lastPageRead: row.last_page_read ?? null,
+    progressPercentage: row.progress_percentage ?? null,
+    readAt: row.read_at ?? null,
+  }));
 };
 
 // Sama seperti cover: nama file halaman tetap (001.webp) padahal isinya bisa
@@ -49,16 +100,16 @@ const pageUrl = (comicSlug, chapterSlugValue, filename, version) =>
   `/media/comics/${comicSlug}/chapters/${chapterSlugValue}/${filename}${version ? `?v=${version}` : ''}`;
 
 /** Chapter + halaman + navigasi prev/next — dipakai halaman Reader. */
-export const getChapterWithPages = (chapterId) => {
+export const getChapterWithPages = (chapterId, userId = null) => {
   const db = getDb();
   const row = db
     .prepare(
       `SELECT ch.*, rp.last_page_read, rp.progress_percentage, rp.read_at
          FROM chapters ch
-         LEFT JOIN reading_progress rp ON rp.chapter_id = ch.id
+         LEFT JOIN reading_progress rp ON rp.chapter_id = ch.id AND rp.user_id = ?
         WHERE ch.id = ?`,
     )
-    .get(chapterId);
+    .get(userId, chapterId);
   if (!row) throw notFound('Chapter tidak ditemukan');
 
   const comic = getComic(row.comic_id);
@@ -179,6 +230,7 @@ export const deleteChapter = async (chapterId) => {
 
 export default {
   listChapters,
+  listChapterRingkas,
   getChapterWithPages,
   ensureChapter,
   replacePages,

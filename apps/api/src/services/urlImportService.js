@@ -1,6 +1,6 @@
 import { getDb } from '../db/index.js';
 import { createLogger } from '../utils/logger.js';
-import { badRequest, sanitizeSourceUrl, slugify } from '../utils/validators.js';
+import { badRequest, domainSumber, sanitizeSourceUrl, slugify } from '../utils/validators.js';
 import { fetchHtml } from '../utils/httpClient.js';
 import { extractChapterPages, extractSeries, resolveSourceConfig } from './sources/index.js';
 import { createComic, getComic } from './comicService.js';
@@ -112,8 +112,17 @@ export const importSeries = async ({
 
   // URL seri disimpan supaya bot pengawas bisa mencocokkan koleksi kita dengan
   // sumbernya (chapter baru rilis, nomor yang bolong) tanpa input ulang.
+  //
+  // Tapi hanya kalau komik ini belum punya sumber, atau sumbernya situs yang
+  // sama. Mengambil dua chapter yang tertinggal dari kiryuu untuk komik yang
+  // diimpor dari komiku tidak boleh diam-diam memindahkan komik itu ke kiryuu:
+  // pemeriksaan chapter baru dan pencocokan etalase berpatokan pada URL ini.
   if (seriesUrl) {
-    getDb().prepare('UPDATE comics SET source_url = ? WHERE id = ?').run(seriesUrl, comic.id);
+    const db = getDb();
+    const sumberLama = db.prepare('SELECT source_url FROM comics WHERE id = ?').get(comic.id)?.source_url;
+    if (!sumberLama || domainSumber(sumberLama) === domainSumber(seriesUrl)) {
+      db.prepare('UPDATE comics SET source_url = ? WHERE id = ?').run(seriesUrl, comic.id);
+    }
   }
 
   if (coverUrl && !comic.coverUrl) comic = await saveCoverFromUrl(comic, coverUrl, seriesUrl);

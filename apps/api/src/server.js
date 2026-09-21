@@ -87,6 +87,29 @@ const start = () => {
     setTimeout(() => process.exit(1), 5000).unref();
   };
 
+
+  /*
+   * Galat yang tidak tertangkap TIDAK BOLEH membuat proses hilang diam-diam.
+   *
+   * Di Node modern, unhandledRejection mematikan proses secara bawaan. Sebelum
+   * ini tidak ada satu pun penangan, jadi satu janji yang gagal di jalur latar
+   * — pekerja unduhan, sapuan pengawas, cek update — cukup untuk mematikan
+   * server. Dan karena aplikasi kini diakses dari jaringan lain, pemiliknya
+   * baru sadar saat halaman tidak mau terbuka dari jauh, tanpa petunjuk apa pun.
+   *
+   * Keduanya DICATAT dulu ke berkas, baru keluar dengan kode gagal supaya
+   * penyebabnya bisa dilacak sesudahnya.
+   */
+  process.on('unhandledRejection', (alasan) => {
+    log.error('janji gagal tanpa penangan — proses berhenti:', alasan);
+    setTimeout(() => process.exit(1), 100).unref();
+  });
+
+  process.on('uncaughtException', (galat) => {
+    log.error('galat tidak tertangkap — proses berhenti:', galat);
+    setTimeout(() => process.exit(1), 100).unref();
+  });
+
   ['SIGINT', 'SIGTERM'].forEach((signal) => process.on(signal, () => shutdown(signal)));
 };
 

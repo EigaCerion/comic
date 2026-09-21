@@ -17,6 +17,17 @@ const {
   passthroughBytesPerPixel,
 } = config.image;
 
+/**
+ * Sisi terpanjang yang sanggup ditulis encoder. WebP berhenti di 16383 px:
+ * melewatinya membuat encode gagal dan seluruh chapter jatuh. Batas tinggi dari
+ * konfigurasi dijepit ke angka ini, bukan sebaliknya — memperkecil tinggi demi
+ * "resolusi HD" justru menggencet lebar strip webtoon yang panjang. Format lain
+ * dianggap sama dengan WebP selama batasnya belum diukur.
+ */
+const BATAS_SISI_FORMAT = { webp: 16383, jpeg: 65535, jpg: 65535 };
+const batasEncoder = BATAS_SISI_FORMAT[format] ?? 16383;
+const batasTinggi = Math.min(maxHeight, batasEncoder);
+
 /** sharp tidak boleh menahan file di cache — koleksi besar cepat makan memori */
 sharp.cache({ files: 0, items: 50 });
 sharp.concurrency(Math.max(1, Math.min(concurrency, 4)));
@@ -95,7 +106,7 @@ const canPassThrough = (metadata, byteLength) => {
   if (!passthrough) return false;
   if (metadata.format !== format) return false;
   if (!metadata.width || !metadata.height) return false;
-  if (metadata.width > maxWidth || metadata.height > maxHeight) return false;
+  if (metadata.width > maxWidth || metadata.height > batasTinggi) return false;
   if (metadata.orientation && metadata.orientation > 1) return false; // masih perlu diputar
   return byteLength / (metadata.width * metadata.height) <= passthroughBytesPerPixel;
 };
@@ -120,6 +131,35 @@ const akhiranSementara = () => {
   return `.${process.pid}-${hitungSementara}.part`;
 };
 
+/**
+ * Simpan byte gambar apa adanya, dengan ekstensi mengikuti format aslinya.
+ *
+ * Dipakai dua keadaan: format yang tidak bisa dibaca libvips, dan strip yang
+ * terlalu tinggi untuk ditulis ulang encoder tanpa ikut dikecilkan.
+ *
+ * Berkas target lama dengan ekstensi berbeda ikut dibuang. Pengunduh memakai
+ * ulang halaman berdasarkan NAMA berkas target (003.webp); kalau 003.webp versi
+ * lama dibiarkan di samping 003.jpg yang baru, unduhan berikutnya akan memakai
+ * ulang berkas basi itu tanpa pernah mengambil yang benar.
+ */
+const simpanApaAdanya = async (buffer, outputPath, formatBerkas, mode) => {
+  const tujuan = `${outputPath.replace(/\.[^.]+$/, '')}.${formatBerkas}`;
+  const sementara = `${tujuan}${akhiranSementara()}`;
+  await fs.writeFile(sementara, buffer);
+  await fs.rm(tujuan, { force: true });
+  await fs.rename(sementara, tujuan);
+  if (tujuan !== outputPath) await fs.rm(outputPath, { force: true });
+
+  return {
+    filename: path.basename(tujuan),
+    image_size: buffer.length,
+    original_size: buffer.length,
+    compression_ratio: 0,
+    hash: crypto.createHash('sha1').update(buffer).digest('hex'),
+    mode,
+  };
+};
+
 export const compressToFile = async (input, outputPath) => {
   const buffer = Buffer.isBuffer(input) ? input : await fs.readFile(input);
   const originalSize = buffer.length;
@@ -141,20 +181,19 @@ export const compressToFile = async (input, outputPath) => {
       );
     }
 
-    const tujuanAsli = `${outputPath.replace(/\.[^.]+$/, '')}.${format}`;
-    const sementara = `${tujuanAsli}${akhiranSementara()}`;
-    await fs.writeFile(sementara, buffer);
-    await fs.rm(tujuanAsli, { force: true });
-    await fs.rename(sementara, tujuanAsli);
+    return simpanApaAdanya(buffer, outputPath, format, `asli:${format}`);
+  }
 
-    return {
-      filename: path.basename(tujuanAsli),
-      image_size: originalSize,
-      original_size: originalSize,
-      compression_ratio: 0,
-      hash: crypto.createHash('sha1').update(buffer).digest('hex'),
-      mode: `asli:${format}`,
-    };
+  // Strip yang, bahkan setelah lebarnya dijepit, masih lebih tinggi dari batas
+  // encoder tidak bisa ditulis ulang tanpa ikut dikecilkan. Chapter 44 The Player
+  // Hides His Past punya halaman asli 800x29569 yang tersimpan 443x16383 — hampir
+  // separuh lebarnya hilang. Byte aslinya disimpan apa adanya: lebih besar, tapi
+  // utuh. Format yang tidak dikenali tetap jatuh ke jalur pengecilan di bawah.
+  const tinggiSetelahLebarDijepit =
+    metadata.width > maxWidth ? Math.round(metadata.height * (maxWidth / metadata.width)) : metadata.height;
+  if (tinggiSetelahLebarDijepit > batasEncoder) {
+    const formatAsli = deteksiFormat(buffer);
+    if (formatAsli) return simpanApaAdanya(buffer, outputPath, formatAsli, `asli-terlalu-tinggi:${formatAsli}`);
   }
   // Ditulis ke berkas sementara lalu di-rename. rename bersifat atomik di satu
   // volume, jadi kalau proses mati atau jaringan putus di tengah jalan tidak
@@ -170,7 +209,7 @@ export const compressToFile = async (input, outputPath) => {
   } else {
     let pipeline = sharp(buffer, { failOn: 'none' })
       .rotate() // hormati EXIF orientation sebelum metadata dibuang
-      .resize(maxWidth, maxHeight, { fit: 'inside', withoutEnlargement: true });
+      .resize(maxWidth, batasTinggi, { fit: 'inside', withoutEnlargement: true });
 
     const grayscale = autoGrayscale && metadata.channels >= 3 && (await isEffectivelyGrayscale(buffer));
     if (grayscale) pipeline = pipeline.grayscale();

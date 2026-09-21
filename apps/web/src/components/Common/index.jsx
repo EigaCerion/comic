@@ -34,10 +34,6 @@ export const ErrorState = ({ error, onRetry }) => (
   </div>
 );
 
-export const Badge = ({ children, className = '' }) => (
-  <span className={`chip ${className}`}>{children}</span>
-);
-
 export const ProgressBar = ({ value = 0, className = '' }) => (
   <div className={`h-1.5 w-full overflow-hidden rounded-full bg-paper-line dark:bg-night-line ${className}`}>
     <div

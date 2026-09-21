@@ -85,7 +85,7 @@ for (const [label, encode] of Object.entries(VARIANTS)) {
     const output = path.join(TMP, `${label.slice(0, 5).trim()}-${index}.webp`);
     const pipeline = sharp(source, { failOn: 'none' })
       .rotate()
-      .resize(1600, 2560, { fit: 'inside', withoutEnlargement: true });
+      .resize(1600, 16383, { fit: 'inside', withoutEnlargement: true });
     const info = await encode(pipeline).toFile(output);
     bytes += info.size;
 
@@ -103,7 +103,7 @@ for (const [label, encode] of Object.entries(VARIANTS)) {
 }
 
 // Passthrough: gambar yang sudah WebP & efisien tidak perlu di-encode ulang.
-const already = await sharp(sources[0]).resize(1600, 2560, { fit: 'inside' }).webp({ quality: 75 }).toBuffer();
+const already = await sharp(sources[0]).resize(1600, 16383, { fit: 'inside' }).webp({ quality: 75 }).toBuffer();
 const bpp = already.length / (1600 * 2400);
 console.log(
   `\npasstrough: contoh WebP ${Math.round(already.length / 1024)} KB = ${bpp.toFixed(3)} byte/pixel ` +

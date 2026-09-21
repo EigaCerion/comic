@@ -1,4 +1,5 @@
 import { getDb } from '../db/index.js';
+import config from '../utils/config.js';
 import { badRequest, notFound, sanitizeSourceUrl } from '../utils/validators.js';
 import { ensureChapter } from './chapterService.js';
 import { getComic } from './comicService.js';
@@ -65,6 +66,11 @@ export const getJob = (id) => {
  *  - `chapterUrl`: URL halaman chapter; worker yang mengekstrak daftar gambarnya
  *    saat job diproses (jadi import 100 chapter tidak perlu 100 request di depan)
  * Semua URL divalidasi terhadap allowlist domain (anti-SSRF).
+ *
+ * `paksaUlang` menandai job agar worker tidak memakai ulang berkas halaman yang
+ * sudah ada. Tanpa tanda ini, mengantrekan ulang chapter yang sudah terunduh
+ * tidak mengganti apa pun: 330 chapter pernah "selesai" dalam 1-5 detik tanpa
+ * satu berkas pun berubah.
  */
 export const enqueueChapterDownload = ({
   comicId,
@@ -74,6 +80,7 @@ export const enqueueChapterDownload = ({
   chapterUrl,
   sourceUrl,
   priority = 0,
+  paksaUlang = false,
 }) => {
   const db = getDb();
   const comic = getComic(comicId);
@@ -100,11 +107,17 @@ export const enqueueChapterDownload = ({
     throw badRequest('Semua URL ditolak: domain tidak ada di ALLOWED_SOURCE_DOMAINS', { rejected });
   }
 
+  // Untuk penggantian, tautan baru TIDAK ditulis ke chapter di sini. Kalau
+  // unduhannya gagal, chapter akan tetap berisi halaman lama tapi mengaku
+  // bersumber dari situs baru — lalu perbaikan otomatis bot pengawas mengunduh
+  // dari tautan itu TANPA paksa, memakai ulang halaman lama yang namanya cocok,
+  // dan chapter berakhir sebagai campuran dua situs. Worker yang menulisnya
+  // setelah halaman baru benar-benar terpasang.
   const { chapter } = ensureChapter({
     comicId: comic.id,
     chapterNumber,
     chapterTitle,
-    sourceUrl: safeChapterUrl ?? sanitizeSourceUrl(sourceUrl) ?? null,
+    sourceUrl: paksaUlang ? null : (safeChapterUrl ?? sanitizeSourceUrl(sourceUrl) ?? null),
   });
 
   const active = db
@@ -115,6 +128,7 @@ export const enqueueChapterDownload = ({
   const payload = JSON.stringify({
     ...(clean.length ? { image_urls: clean } : {}),
     ...(safeChapterUrl ? { chapter_url: safeChapterUrl } : {}),
+    ...(paksaUlang === true ? { paksa_ulang: true } : {}),
   });
 
   // Job lama yang gagal DIPAKAI ULANG, bukan ditinggalkan lalu ditambah baris
@@ -143,6 +157,61 @@ export const enqueueChapterDownload = ({
     .run(comic.id, chapter.id, Number(priority) || 0, payload);
 
   return { job: getJob(info.lastInsertRowid), rejected };
+};
+
+/**
+ * Ganti isi satu chapter dari tautan situs lain atau daftar URL gambar.
+ *
+ * Kasus nyatanya: halaman 32 chapter 59 Regressor's Life After Retirement sudah
+ * berpita abu-abu di gambar komiku sendiri, sementara komikindo menyajikan versi
+ * utuh. Menghapus lalu mengimpor ulang ikut membuang posisi baca dan bookmark
+ * (ON DELETE CASCADE), jadi penggantian dikerjakan di baris chapter yang SAMA:
+ * ensureChapter menemukan baris itu lewat nomornya, dan source_url-nya ikut
+ * pindah ke tautan baru.
+ */
+export const gantiChapter = (chapterId, { chapterUrl, imageUrls } = {}) => {
+  const db = getDb();
+  const chapter = db.prepare('SELECT id, comic_id, chapter_number FROM chapters WHERE id = ?').get(chapterId);
+  if (!chapter) throw notFound('Chapter tidak ditemukan');
+
+  if (chapterUrl != null && typeof chapterUrl !== 'string') throw badRequest('chapter_url harus berupa teks');
+  if (imageUrls != null && !Array.isArray(imageUrls)) throw badRequest('image_urls harus berupa daftar URL');
+
+  const tautan = (chapterUrl ?? '').trim();
+  // Baris kosong di daftar tempelan bukan URL yang ditolak. Tanpa penyaring ini,
+  // satu baris kosong di ujung daftar menggagalkan seluruh penggantian karena
+  // penolakan di bawah bersifat semua-atau-tidak-sama-sekali.
+  const gambar = (imageUrls ?? [])
+    .map((url) => (typeof url === 'string' ? url.trim() : url))
+    .filter((url) => url !== '');
+  if (!tautan && gambar.length === 0) throw badRequest('Isi chapter_url atau image_urls untuk mengganti chapter');
+  if (gambar.length > config.upload.maxPages) {
+    throw badRequest(`Paling banyak ${config.upload.maxPages} gambar per chapter`);
+  }
+
+  // enqueueChapterDownload sengaja longgar: chapter_url yang ditolak diabaikan
+  // selama masih ada image_urls, dan gambar yang ditolak dibuang satu per satu.
+  // Untuk penggantian itu berbahaya — chapter diam-diam tergantikan oleh versi
+  // yang halamannya bolong. Jadi satu URL ditolak berarti seluruhnya ditolak.
+  if (tautan && !sanitizeSourceUrl(tautan)) {
+    throw badRequest('chapter_url ditolak: domain tidak ada di ALLOWED_SOURCE_DOMAINS');
+  }
+  const ditolak = gambar.filter((url) => !sanitizeSourceUrl(url));
+  if (ditolak.length > 0) {
+    throw badRequest(`${ditolak.length} URL gambar ditolak: domain tidak ada di ALLOWED_SOURCE_DOMAINS`, {
+      rejected: ditolak,
+    });
+  }
+
+  const { job } = enqueueChapterDownload({
+    comicId: chapter.comic_id,
+    chapterNumber: chapter.chapter_number,
+    chapterUrl: tautan || undefined,
+    imageUrls: gambar,
+    priority: 5,
+    paksaUlang: true,
+  });
+  return { chapterId: chapter.id, jobId: job.id };
 };
 
 export const retryJob = (id) => {
@@ -234,6 +303,7 @@ export default {
   listJobs,
   getJob,
   enqueueChapterDownload,
+  gantiChapter,
   retryJob,
   cancelJob,
   pauseQueue,

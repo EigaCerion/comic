@@ -237,7 +237,13 @@ export const deleteComic = async (id) => {
 };
 
 /** Untuk halaman Home: komik yang sedang dibaca. */
-export const continueReading = (limit = 8) => {
+export const continueReading = (limit = 8, userId = null) => {
+  // Tamu tidak punya riwayat baca — sejak menyimpan progres butuh akun, tidak
+  // ada lagi baris yang bisa jadi miliknya. Sebelum ini baris "Lanjut baca"
+  // membocorkan 8 posisi baca pemilik ke siapa pun yang membuka beranda tanpa
+  // login sama sekali.
+  if (!userId) return [];
+
   const rows = getDb()
     .prepare(
       `SELECT c.*, rp.last_page_read, rp.progress_percentage, rp.read_at,
@@ -245,11 +251,15 @@ export const continueReading = (limit = 8) => {
          FROM reading_progress rp
          JOIN comics c ON c.id = rp.comic_id
          JOIN chapters ch ON ch.id = rp.chapter_id
-        WHERE rp.read_at = (SELECT MAX(read_at) FROM reading_progress WHERE comic_id = rp.comic_id)
+        WHERE rp.user_id = ?
+          AND rp.read_at = (
+                SELECT MAX(read_at) FROM reading_progress
+                 WHERE comic_id = rp.comic_id AND user_id = ?
+              )
         ORDER BY rp.read_at DESC
         LIMIT ?`,
     )
-    .all(limit);
+    .all(userId, userId, limit);
 
   return rows.map((row) => ({
     comic: shapeComic(row),

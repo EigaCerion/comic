@@ -4,9 +4,45 @@ import config from './config.js';
 
 fs.mkdirSync(config.logsDir, { recursive: true });
 
+/*
+ * Rotasi log sederhana.
+ *
+ * Satu baris ditulis untuk SETIAP request, dan tidak ada yang pernah
+ * membersihkannya: debug.log sudah 31,9 MB. Dua akibatnya nyata — disk penuh
+ * bisa membuat penulisan gagal dan proses mati, dan berkas itu sendiri adalah
+ * catatan lengkap kebiasaan membaca pemilik (komik mana, jam berapa, dari
+ * perangkat apa) yang tersimpan tanpa batas waktu.
+ *
+ * Aturannya sengaja sederhana: begitu melewati batas, berkas lama disimpan
+ * sebagai .1 (menimpa yang sebelumnya) lalu berkas baru dimulai. Tidak ada
+ * dependensi, tidak ada penjadwal — cukup untuk aplikasi satu proses.
+ */
+const BATAS_LOG = Number(process.env.LOG_MAX_BYTES) || 8 * 1024 * 1024;
+
+const putarKalauPenuh = (berkas) => {
+  try {
+    const stat = fs.statSync(berkas);
+    if (stat.size < BATAS_LOG) return;
+    fs.rmSync(`${berkas}.1`, { force: true });
+    fs.renameSync(berkas, `${berkas}.1`);
+  } catch {
+    /* berkas belum ada, atau sedang dipakai proses lain — bukan alasan gagal */
+  }
+};
+
+const buatAliran = (nama) => {
+  const berkas = path.join(config.logsDir, nama);
+  putarKalauPenuh(berkas);
+  const aliran = fs.createWriteStream(berkas, { flags: 'a' });
+  // Kegagalan menulis log TIDAK BOLEH menjatuhkan proses. Tanpa penangan ini,
+  // disk penuh berarti server berhenti melayani.
+  aliran.on('error', () => {});
+  return aliran;
+};
+
 const streams = {
-  debug: fs.createWriteStream(path.join(config.logsDir, 'debug.log'), { flags: 'a' }),
-  error: fs.createWriteStream(path.join(config.logsDir, 'error.log'), { flags: 'a' }),
+  debug: buatAliran('debug.log'),
+  error: buatAliran('error.log'),
 };
 
 const DEBUG_ENABLED = /naruread|\*/.test(process.env.DEBUG || '') || config.env !== 'production';
