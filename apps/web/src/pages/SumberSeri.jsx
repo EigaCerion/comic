@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { ambilSeri } from '../sumber/ambil.js';
 import { siapkanPola } from '../sumber/pola.js';
 import { EmptyState, Spinner } from '../components/Common/index.jsx';
 import { formatChapterNumber } from '../utils/format.js';
+import { useImportFromUrlMutation } from '../api/apiSlice.js';
+import { showToast } from '../store/slices/uiSlice.js';
+import { useAuth } from '../hooks/useAuth.js';
 
 /**
  * Satu seri di situs sumber, dibaca langsung oleh HP: sampul, sinopsis, genre,
@@ -14,10 +18,14 @@ import { formatChapterNumber } from '../utils/format.js';
  * miring, titik dua, dan tanda tanya, dan menyelipkannya sebagai segmen jalur
  * berarti setiap kali router harus menebak di mana alamat itu berakhir.
  *
- * Halaman ini BELUM mengunduh apa pun. Tiap baris chapter sudah menyediakan
- * tempat untuk tombol simpan (`aksi`), tapi yang mengisinya adalah milestone
- * unduhan — bentuk barisnya dipastikan sekarang supaya penambahan itu nanti
- * tidak perlu membongkar tata letaknya.
+ * Chapter yang dipilih di sini diunduh LEWAT SERVER RUMAH, bukan langsung ke
+ * penyimpanan HP. Bukan pilihan gaya: gambar halaman perlu diambil dari situs
+ * sumber, dikompresi, lalu diberi nomor halaman yang stabil, dan itu semua hidup
+ * di sisi server (downloadService). Yang menyalin ke HP adalah tombol "Simpan ke
+ * HP" di halaman detail komik, dan ia menuntut chapter yang berkasnya SUDAH ada
+ * di server. Jadi urutannya memang dua langkah, dan pesan setelah mengantre
+ * menyebut langkah keduanya supaya tidak ada yang menunggu chapter muncul di HP
+ * padahal servernya masih mengunduh.
  */
 
 const labelSumber = (host) => {
@@ -29,22 +37,48 @@ const labelSumber = (host) => {
 /**
  * Satu baris chapter.
  *
- * `aksi` adalah satu-satunya alasan komponen ini dipisah: milestone unduhan
- * menaruh tombol simpan di sana, dan baris ini sudah menyediakan ruangnya
- * dengan lebar tetap supaya judul chapter yang panjang tidak mendorong tombol
- * keluar layar begitu tombolnya muncul.
+ * `aksi` adalah satu-satunya alasan komponen ini dipisah: kotak centang pemilih
+ * unduhan duduk di sana, dan baris ini menyediakan ruangnya dengan lebar tetap
+ * supaya judul chapter yang panjang tidak mendorongnya keluar layar.
+ *
+ * Saat bisa dipilih, SELURUH baris jadi <label> untuk kotak centangnya, bukan
+ * hanya kotak 16px itu. Di layar 375px kotak centang sendiri adalah sasaran
+ * sentuh terkecil yang masih mungkin salah kena, sementara memilih 30 chapter
+ * berarti 30 ketukan tepat sasaran — dan baris yang tidak bisa diketuk membuat
+ * ketukan yang meleset terasa seperti aplikasi yang tidak merespons.
  */
-const BarisChapter = ({ chapter, aksi = null }) => (
-  <li className="flex min-w-0 items-center gap-3 border-b border-paper-line px-3 py-2 last:border-b-0 dark:border-night-line">
-    <span className="w-16 flex-none text-xs font-bold tabular-nums">
-      {chapter.nomor == null ? '—' : formatChapterNumber(chapter.nomor)}
-    </span>
-    <span className="min-w-0 flex-1 truncate text-sm" title={chapter.judul ?? ''}>
-      {chapter.judul || `Chapter ${chapter.nomor ?? '?'}`}
-    </span>
-    {aksi ? <span className="flex-none">{aksi}</span> : null}
-  </li>
-);
+const BarisChapter = ({ chapter, aksi = null, bisaDipilih = false, dipilih = false, saatToggle }) => {
+  const isi = (
+    <>
+      <span className="w-16 flex-none text-xs font-bold tabular-nums">
+        {chapter.nomor == null ? '—' : formatChapterNumber(chapter.nomor)}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-sm" title={chapter.judul ?? ''}>
+        {chapter.judul || `Chapter ${chapter.nomor ?? '?'}`}
+      </span>
+      {aksi ? <span className="flex-none">{aksi}</span> : null}
+    </>
+  );
+
+  const kelas = 'flex min-w-0 items-center gap-3 border-b border-paper-line px-3 py-2 last:border-b-0 dark:border-night-line';
+
+  if (!bisaDipilih) return <li className={kelas}>{isi}</li>;
+
+  return (
+    <li className={dipilih ? `${kelas} bg-naruto/[0.07]` : kelas}>
+      <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+        <input
+          type="checkbox"
+          className="h-4 w-4 flex-none accent-naruto"
+          checked={dipilih}
+          onChange={saatToggle}
+          aria-label={`Pilih chapter ${chapter.nomor == null ? chapter.judul : formatChapterNumber(chapter.nomor)}`}
+        />
+        {isi}
+      </label>
+    </li>
+  );
+};
 
 /**
  * Sampul seri, dengan penahan kalau gambarnya tidak sampai.
@@ -75,13 +109,26 @@ const SampulSeri = ({ seri }) => {
   );
 };
 
+/** Berapa chapter yang disorot tombol cepat "terbaru". */
+const CEPAT = [5, 10, 25];
+
 export const SumberSeri = () => {
   const [params] = useSearchParams();
   const alamat = params.get('url') ?? '';
+  const dispatch = useDispatch();
+
+  // Rute /api/imports/url dijaga wajibKemampuan('kelola_koleksi') di sisi server
+  // (routes/index.js). Kotak centang disembunyikan dari yang tidak punya izin itu
+  // bukan sebagai pengamanan — pengamanannya di server — melainkan supaya tamu
+  // tidak menghabiskan waktu memilih 40 chapter untuk dijawab 403.
+  const { bisa } = useAuth();
+  const kelola = bisa('kelola_koleksi');
 
   const [seri, setSeri] = useState(null);
   const [memuat, setMemuat] = useState(false);
   const [galat, setGalat] = useState(null);
+  const [terpilih, setTerpilih] = useState(() => new Set());
+  const [importFromUrl, { isLoading: mengantre }] = useImportFromUrlMutation();
 
   const muat = useCallback(async () => {
     if (!alamat) return;
@@ -125,6 +172,77 @@ export const SumberSeri = () => {
       }))
       .sort((a, b) => (b.nomor ?? -Infinity) - (a.nomor ?? -Infinity));
   }, [seri]);
+
+  // Pilihan dilupakan begitu serinya berganti. Tanpa ini, URL chapter yang
+  // dipilih di seri sebelumnya masih duduk di Set saat halaman dipakai ulang oleh
+  // router untuk seri lain, dan tombolnya melaporkan jumlah yang tidak ada di
+  // daftar yang sedang terlihat.
+  useEffect(() => {
+    setTerpilih(new Set());
+  }, [alamat]);
+
+  const toggle = (url) =>
+    setTerpilih((lama) => {
+      const baru = new Set(lama);
+      if (baru.has(url)) baru.delete(url);
+      else baru.add(url);
+      return baru;
+    });
+
+  // `chapters` sudah urut dari nomor terbesar, jadi "terbaru" cukup potongan awal.
+  const pilihTerbaru = (jumlah) => setTerpilih(new Set(chapters.slice(0, jumlah).map((chapter) => chapter.url)));
+
+  const unduhTerpilih = async () => {
+    const pilihan = chapters.filter((chapter) => terpilih.has(chapter.url));
+    if (pilihan.length === 0) return;
+
+    try {
+      const hasil = await importFromUrl({
+        /*
+         * `alamat`, bukan seri.url: extractSeries tidak mengembalikan field url
+         * sama sekali (lihat objek kembaliannya di packages/sumber/index.js), jadi
+         * seri.url adalah undefined. Mengirimnya berarti importSeries menerima
+         * seriesUrl kosong, dan yang hilang bukan sekadar satu kolom — source_url
+         * itulah yang dipakai Scout untuk mencocokkan kartu etalase dengan koleksi
+         * dan pemeriksaan chapter baru untuk tahu harus melihat ke mana.
+         */
+        series_url: alamat,
+        title: seri.title,
+        cover_url: seri.coverUrl,
+        author: seri.author,
+        artist: seri.artist,
+        status: seri.status,
+        genres: seri.genres,
+        description: seri.description,
+        chapters: pilihan.map((chapter) => ({
+          number: chapter.nomor,
+          title: chapter.judul,
+          url: chapter.url,
+        })),
+      }).unwrap();
+
+      // Hanya yang benar-benar masuk antrian dilepas dari pilihan. Yang dilewati
+      // (nomor yang sudah ada, URL ditolak allowlist) tetap tercentang supaya
+      // terlihat mana yang tidak jadi — mengosongkan semuanya membuat kegagalan
+      // sebagian tidak bisa dibedakan dari keberhasilan penuh.
+      const diantre = new Set((hasil.queued ?? []).map((antrian) => antrian.number));
+      setTerpilih(
+        new Set(pilihan.filter((chapter) => !diantre.has(chapter.nomor)).map((chapter) => chapter.url)),
+      );
+
+      const dilewati = hasil.skipped?.length ?? 0;
+      dispatch(
+        showToast({
+          message:
+            `${hasil.queued?.length ?? 0} chapter masuk antrian server` +
+            (dilewati ? ` · ${dilewati} dilewati (sudah ada)` : '') +
+            '. Setelah selesai diunduh, simpan ke HP dari halaman komiknya.',
+        }),
+      );
+    } catch (error) {
+      dispatch(showToast({ type: 'error', message: error?.data?.error ?? 'Gagal mengantre chapter' }));
+    }
+  };
 
   if (!alamat) {
     return (
@@ -205,6 +323,55 @@ export const SumberSeri = () => {
               </button>
             </div>
 
+            {/*
+              Panel pemilih. Bukan bilah melayang (fixed): layar ini dibaca di HP
+              dengan satu tangan, dan bilah melayang di bawah adalah persis jenis
+              elemen yang menimpa isi halaman di layar 375px. Panel ini ikut
+              mengalir, tepat di atas daftar yang dipilihnya.
+            */}
+            {kelola && chapters.length > 0 && (
+              <div className="card mb-2 flex flex-wrap items-center gap-2 p-3">
+                <span className="label-mikro flex-none">Pilih</span>
+                {CEPAT.filter((jumlah) => jumlah < chapters.length).map((jumlah) => (
+                  <button
+                    key={jumlah}
+                    type="button"
+                    className="btn-ghost px-2.5 py-1 text-xs"
+                    onClick={() => pilihTerbaru(jumlah)}
+                  >
+                    {jumlah} terbaru
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="btn-ghost px-2.5 py-1 text-xs"
+                  onClick={() => pilihTerbaru(chapters.length)}
+                >
+                  Semua ({chapters.length})
+                </button>
+                {terpilih.size > 0 && (
+                  <button
+                    type="button"
+                    className="btn-ghost px-2.5 py-1 text-xs"
+                    onClick={() => setTerpilih(new Set())}
+                  >
+                    Kosongkan
+                  </button>
+                )}
+
+                {/* ml-auto: tombol unduh menempel ke tepi kanan pada layar lebar,
+                    dan turun jadi baris sendiri di 375px karena flex-wrap. */}
+                <button
+                  type="button"
+                  className="btn-accent ml-auto px-3 py-1.5 text-xs"
+                  onClick={unduhTerpilih}
+                  disabled={terpilih.size === 0 || mengantre}
+                >
+                  {mengantre ? 'Mengantre…' : `⬇ Unduh ${terpilih.size} chapter`}
+                </button>
+              </div>
+            )}
+
             {chapters.length === 0 ? (
               <EmptyState
                 icon="🍃"
@@ -214,7 +381,13 @@ export const SumberSeri = () => {
             ) : (
               <ul className="card overflow-hidden p-0">
                 {chapters.map((chapter) => (
-                  <BarisChapter key={chapter.kunci} chapter={chapter} />
+                  <BarisChapter
+                    key={chapter.kunci}
+                    chapter={chapter}
+                    bisaDipilih={kelola}
+                    dipilih={terpilih.has(chapter.url)}
+                    saatToggle={() => toggle(chapter.url)}
+                  />
                 ))}
               </ul>
             )}

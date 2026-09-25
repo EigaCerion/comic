@@ -31,7 +31,8 @@
     "precheck": "node apps/api/scripts/preflight.js",
     "bench:compress": "npm run bench:compress --workspace apps/api",
     "covers:backfill": "npm run covers:backfill --workspace apps/api",
-    "test:audit": "npm run test:audit --workspace apps/api"
+    "test:audit": "npm run test:audit --workspace apps/api",
+    "test:rentang": "npm run test:rentang --workspace apps/api"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

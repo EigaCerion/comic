@@ -250,6 +250,13 @@ dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    // Disebut eksplisit, bukan dibiarkan ikut transitif dari appcompat:
+    // MainActivity mengimpor ViewCompat, WindowInsetsCompat, dan Insets dari sini
+    // untuk memasang inset sistem sebagai padding WebView. Versinya sudah ada di
+    // variables.gradle karena capacitor-android memakainya juga; tanpa baris ini,
+    // yang menjaga status bar tidak menimpa TopBar bergantung pada dependensi
+    // yang tidak pernah kita minta dan boleh menghilang saat appcompat naik versi.
+    implementation "androidx.core:core:$androidxCoreVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"

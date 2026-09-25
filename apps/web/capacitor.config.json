@@ -2,6 +2,7 @@
   "appId": "id.naruread.app",
   "appName": "NaruReader",
   "webDir": "dist-android",
+  "backgroundColor": "#0f1419",
   "server": {
     "androidScheme": "http",
     "cleartext": true
