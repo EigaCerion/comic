@@ -508,7 +508,37 @@ const siapkan = async () => {
   if (ASLI_NATIF) {
     try {
       const { Filesystem, Directory } = await fsPlugin();
-      await Filesystem.mkdir({ path: AKAR, directory: Directory.Data, recursive: true });
+
+      /*
+       * mkdir punya try SENDIRI, dan ini bukan kerapian — di sinilah seluruh
+       * lapisan offline pernah mati.
+       *
+       * Filesystem.mkdir MENOLAK kalau foldernya sudah ada, recursive:true
+       * sekalipun (pesannya "Directory already exists, cannot be overwritten";
+       * pastikanFolder di berkas ini sudah mencatat perilaku yang sama).
+       * Folder `offline` sudah ada pada SETIAP peluncuran setelah chapter
+       * pertama disimpan — jadi keadaan yang paling sering terjadi adalah
+       * keadaan yang gagal.
+       *
+       * Dulu kedua panggilan ini berbagi satu try. Akibatnya: mkdir menolak,
+       * getUri tidak pernah dijalankan, dan uriAkar tetap null seumur proses.
+       * Dari sana semuanya runtuh tanpa satu pesan galat pun ke muka pengguna:
+       *   - urlLokal mengembalikan null, jadi rakitChapterLokal mengaku tidak
+       *     punya chapter itu → SETIAP komik tersimpan tidak bisa dibaca sama
+       *     sekali, padahal berkas dan katalognya utuh;
+       *   - turunkanBerkas melempar "Folder penyimpanan aplikasi tidak bisa
+       *     dibuka" → menyimpan chapter baru pun gagal.
+       * Yang membuatnya sulit dilihat: pada pemasangan baru foldernya belum ada,
+       * jadi mkdir berhasil dan semuanya bekerja — kerusakannya baru muncul
+       * pada peluncuran KEDUA, dan sembuh sesaat setiap kali data aplikasi
+       * dibersihkan.
+       */
+      try {
+        await Filesystem.mkdir({ path: AKAR, directory: Directory.Data, recursive: true });
+      } catch {
+        /* sudah ada, dan itu justru keadaan normalnya */
+      }
+
       const { uri } = await Filesystem.getUri({ path: AKAR, directory: Directory.Data });
       uriAkar = uri;
     } catch {

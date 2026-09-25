@@ -9,7 +9,8 @@
     "build:android": "vite build --mode android && cap sync android",
     "ikon:android": "node scripts/buat-ikon-android.mjs",
     "preview": "vite preview",
-    "lint": "eslint src --ext .js,.jsx"
+    "lint": "eslint src --ext .js,.jsx",
+    "test:offline": "node uji-offline/pandu.mjs"
   },
   "dependencies": {
     "@capacitor-community/keep-awake": "^8.0.1",
