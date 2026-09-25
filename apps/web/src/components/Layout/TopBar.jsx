@@ -29,8 +29,15 @@ export const TopBar = () => {
   // Token permukaan disamakan dengan sidebar (night-soft). Sebelumnya header
   // memakai `night` sementara sidebar `night-soft` — dua material berbeda yang
   // bersentuhan tepat di x=256.
+  //
+  // `aman-atas` (globals.css) memberi jarak setinggi status bar. Dipasang di
+  // header, BUKAN di <body>: header ini `sticky top-0`, dan elemen sticky
+  // berpegang pada tepi VIEWPORT — padding di body menggeser aliran halaman
+  // tanpa menggeser header, jadi jam dan ikon baterai tetap jatuh di atasnya.
+  // Di header, paddingnya sekaligus membuat latar header menutupi jalur di
+  // belakang status bar, bukan meninggalkan pita kosong.
   return (
-    <header className="sticky top-0 z-20 border-b border-paper-line bg-paper-soft dark:border-night-line dark:bg-night-soft/95 lg:bg-paper-soft/80 lg:backdrop-blur-xl dark:lg:bg-night-soft/80">
+    <header className="aman-atas sticky top-0 z-20 border-b border-paper-line bg-paper-soft dark:border-night-line dark:bg-night-soft/95 lg:bg-paper-soft/80 lg:backdrop-blur-xl dark:lg:bg-night-soft/80">
       {/* gutter + max-w yang sama dengan <main> supaya tepi kiri kotak pencarian
           sejajar dengan tepi kiri konten, dan tetap sejajar di monitor lebar. */}
       <div className="gutter-app mx-auto flex h-16 w-full max-w-7xl items-center gap-3">

@@ -299,7 +299,7 @@ naruread-app/
 │           ├── pages/           # Home, Browse, ComicDetail, Reader, Downloads, Upload, Settings
 │           ├── store/           # RTK store + ui/reader slice (persist ke localStorage)
 │           └── styles/          # theme.css (token warna) + globals.css
-└── docs/                        # ARCHITECTURE.md, API-REFERENCE.md
+└── docs/                        # ARCHITECTURE.md, API-REFERENCE.md, KOMPILASI-APK.md
 ```
 
 ---

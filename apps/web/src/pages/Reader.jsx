@@ -12,6 +12,7 @@ import { ReaderHeader, ReaderFooter } from '../components/Reader/ReaderControls.
 import PageImage from '../components/Reader/PageImage.jsx';
 import ChapterPicker from '../components/Reader/ChapterPicker.jsx';
 import { IS_APP } from '../platform/index.js';
+import { dariSumber } from '../offline/idSumber.js';
 import ModeBacaNatif from '../platform/ModeBacaNatif.jsx';
 import PosisiBacaApp from '../offline/PosisiBacaApp.jsx';
 import SumberOffline from '../offline/SumberOffline.jsx';
@@ -35,7 +36,21 @@ export const Reader = () => {
     isError,
     error,
     refetch,
-  } = useGetChapterQuery(chapterId);
+    /*
+     * Chapter dari situs sumber tidak pernah ada di server rumah, jadi
+     * permintaannya dilewati sama sekali.
+     *
+     * Bukan penghematan: kalau servernya justru sedang TERSAMBUNG, permintaan
+     * itu dijawab 404, `isError` menyala, dan spanduk galat muncul di atas
+     * chapter yang sebenarnya sudah lengkap di HP. Yang paling parah, isError
+     * juga memberi makan gerbang `gagalTanpaIsi` di bawah pada milidetik
+     * sebelum <SumberOffline /> sempat melapor.
+     *
+     * dariSumber() datang dari offline/idSumber.js yang sengaja dibuat murni —
+     * tanpa satu pun impor — supaya baris ini tidak menyeret lapisan offline
+     * (dan lewat itu plugin Capacitor) ke bundel web.
+     */
+  } = useGetChapterQuery(chapterId, { skip: dariSumber(chapterId) });
   const [saveProgress] = useSaveProgressMutation();
   const [addBookmark, { isLoading: isBookmarking }] = useAddBookmarkMutation();
 

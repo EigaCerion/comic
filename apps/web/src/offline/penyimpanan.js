@@ -1,5 +1,12 @@
 import { useSyncExternalStore } from 'react';
 import { ASLI_NATIF, IS_APP } from '../platform/index.js';
+import {
+  alokasikanId,
+  idChapterTerdaftar,
+  pemetaanDariChapter,
+  pemetaanKosong,
+  sahkanPemetaan,
+} from './idSumber.js';
 import { siapkanPosisi } from './posisiBaca.js';
 
 /**
@@ -9,7 +16,8 @@ import { siapkanPosisi } from './posisiBaca.js';
  * Tata letaknya di Directory.Data (folder milik aplikasi; ikut terhapus saat
  * aplikasi dicopot, dan tidak pernah muncul di galeri):
  *
- *   offline/index.json          katalog: komik apa saja, chapter apa saja
+ *   offline/index.json          katalog: komik apa saja, chapter apa saja,
+ *                               dan pemetaan alamat situs sumber -> id lokal
  *   offline/<chapterId>/chapter.json   jawaban server apa adanya + nama berkas
  *   offline/<chapterId>/001.webp       halaman, nama berkasnya dari server
  *   offline/<chapterId>/sampul.webp    cover komiknya
@@ -26,7 +34,18 @@ import { siapkanPosisi } from './posisiBaca.js';
  * komik tanpa gambar di rak offline.
  */
 
-export const VERSI_INDEKS = 1;
+/**
+ * Versi bentuk index.json.
+ *
+ * 1 -> 2 menambahkan blok `pemetaan` (alamat situs sumber -> id lokal; lihat
+ * idSumber.js). Katalog versi 1 TETAP DIBACA apa adanya dan cuma diberi
+ * pemetaan kosong — lihat sahkan(). Itu bukan kesopanan: pemiliknya punya
+ * ratusan chapter tersimpan di HP, dan menolak katalog lama berarti membuang
+ * seluruhnya ke bangunUlang() yang harus membuka chapter.json satu per satu.
+ * Pemindaian itu bisa lewat dari batas 4 detik di siapkanOffline(), dan yang
+ * tampil pada peluncuran pertama sesudah pembaruan adalah rak yang kosong.
+ */
+export const VERSI_INDEKS = 2;
 
 const AKAR = 'offline';
 const BERKAS_INDEKS = `${AKAR}/index.json`;
@@ -50,7 +69,12 @@ export const fsPlugin = async () => {
   return modulFs;
 };
 
-const indeksKosong = () => ({ versi: VERSI_INDEKS, komik: {}, chapter: {} });
+const indeksKosong = () => ({
+  versi: VERSI_INDEKS,
+  komik: {},
+  chapter: {},
+  pemetaan: pemetaanKosong(),
+});
 
 let indeks = indeksKosong();
 
@@ -101,6 +125,24 @@ export const ukuranBerkas = async (jalur) => {
     return hasil?.type === 'directory' ? null : (hasil?.size ?? null);
   } catch {
     return null;
+  }
+};
+
+/**
+ * Buang satu berkas, tanpa mengeluh kalau memang tidak ada.
+ *
+ * Dipakai unduhSumber.js untuk membersihkan berkas yang gagal terunduh di
+ * tengah jalan. Jalur server tidak membutuhkannya karena server menyebutkan
+ * ukuran tiap halaman, jadi berkas terpotong tertolak sendiri saat diperiksa;
+ * situs sumber tidak menyebutkan apa pun, sehingga satu-satunya syarat yang
+ * tersisa adalah "ada dan tidak kosong" — dan berkas separuh memenuhinya.
+ */
+export const hapusBerkas = async (jalur) => {
+  const { Filesystem, Directory } = await fsPlugin();
+  try {
+    await Filesystem.deleteFile({ path: jalur, directory: Directory.Data });
+  } catch {
+    /* tidak ada, atau tidak bisa dihapus: pemanggilnya sudah dalam jalur galat */
   }
 };
 
@@ -222,14 +264,44 @@ const bangunUlang = async () => {
     baru.chapter[chapterId] = simpanan.chapter;
     if (simpanan.komik?.id) baru.komik[simpanan.komik.id] = simpanan.komik;
   }
+
+  // Pemetaan sumber ikut dipulihkan, bukan dibiarkan kosong. Entri chapter
+  // sumber membawa blok `sumber`-nya sendiri justru untuk saat ini: tanpa
+  // dipulihkan, chapter 1–4 sebuah komik sumber tetap terbaca di rak tapi
+  // chapter 5 mendapat comicId baru, dan komik yang sama pecah jadi dua kartu
+  // yang tombol prev/next-nya tidak menyambung.
+  baru.pemetaan = pemetaanDariChapter(Object.values(baru.chapter));
   return baru;
 };
 
+/**
+ * Terima katalog yang bentuknya masih bisa dipakai, apa pun versinya — selama
+ * versinya bukan dari masa depan.
+ *
+ * Versi yang LEBIH TINGGI dari VERSI_INDEKS ditolak, dan itu satu-satunya
+ * penolakan yang tersisa: katalog yang ditulis APK lebih baru bisa punya bidang
+ * yang artinya belum diketahui di sini, dan menebaknya lebih berbahaya daripada
+ * membangun ulang dari folder (yang selalu bisa dilakukan karena tiap chapter
+ * membawa chapter.json-nya sendiri).
+ */
 const sahkan = (mentah) => {
   if (!mentah || typeof mentah !== 'object') return null;
-  if (mentah.versi !== VERSI_INDEKS) return null;
+  const versi = Number(mentah.versi);
+  if (!Number.isInteger(versi) || versi < 1 || versi > VERSI_INDEKS) return null;
   if (!mentah.komik || !mentah.chapter) return null;
-  return { versi: VERSI_INDEKS, komik: mentah.komik, chapter: mentah.chapter };
+  return {
+    versi: VERSI_INDEKS,
+    komik: mentah.komik,
+    chapter: mentah.chapter,
+    // Katalog versi 1 tidak punya blok ini; sahkanPemetaan membalas pemetaan
+    // kosong untuk undefined, jadi tidak ada cabang khusus yang perlu diingat.
+    // Id yang sudah dipegang katalog ikut disetorkan supaya penghitungnya tidak
+    // pernah mengulang id yang foldernya sudah terisi.
+    pemetaan: sahkanPemetaan(mentah.pemetaan, [
+      ...Object.keys(mentah.chapter ?? {}),
+      ...Object.keys(mentah.komik ?? {}),
+    ]),
+  };
 };
 
 const muatIndeks = async () => {
@@ -297,6 +369,33 @@ export const daftarkanChapter = ({ komik, chapter }) =>
     isi.komik[komik.id] = { ...isi.komik[komik.id], ...komik };
     isi.chapter[chapter.id] = chapter;
   });
+
+/**
+ * Id lokal untuk satu chapter dari situs sumber — dibuat kalau belum ada.
+ *
+ * Lewat ubahIndeks, dan itulah seluruh jaminannya: alokasi berjalan di dalam
+ * rantai promise yang sama dengan setiap penulisan katalog, jadi "Simpan 25
+ * chapter" yang memanggil fungsi ini 25 kali tanpa menunggu tetap menghasilkan
+ * SATU comicId. Dipanggil sebelum satu byte pun diunduh, karena id itulah nama
+ * foldernya.
+ *
+ * Pemetaannya sengaja TIDAK dibuang saat chapternya dihapus dari HP. Chapter
+ * yang sama harus mendapat id yang sama kalau disimpan lagi: posisi baca
+ * disimpan per id chapter (posisiBaca.js), dan id baru berarti membaca ulang
+ * dari halaman satu setiap kali chapter dihapus lalu diambil lagi.
+ *
+ * @param {{host:string, urlSeri:string, nomor:number|null, urlChapter:string}} spec
+ * @returns {Promise<{comicId:number, chapterId:number, baru:boolean}>}
+ */
+export const idSumber = (spec) => ubahIndeks((isi) => alokasikanId(isi.pemetaan, spec));
+
+/**
+ * Id chapter sumber yang SUDAH terdaftar, atau null. Tanpa alokasi dan tanpa
+ * menulis apa pun: layar SumberSeri memanggilnya untuk setiap baris chapter
+ * hanya demi menandai mana yang sudah ada di HP, dan menandai daftar tidak
+ * boleh menciptakan id untuk 700 chapter yang tidak pernah diunduh.
+ */
+export const idChapterSumber = (spec, isi = indeksSekarang()) => idChapterTerdaftar(isi.pemetaan, spec);
 
 export const hapusChapterTersimpan = async (chapterId) => {
   // Baris indeksnya hanya dibuang kalau berkasnya benar-benar lenyap. Katalog

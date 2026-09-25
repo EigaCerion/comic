@@ -33,9 +33,16 @@ key.properties
 apps/api/data/
 apps/api/import/
 apps/api/logs/
+apps/web/uji-offline/
 
 # editor / OS
-.vscode/
+.vscode/*
+# ...kecuali tugas build. Isinya perintah proyek, bukan selera penyunting, dan
+# jalur mesinnya (D:\Android) sama persis dengan yang sudah ditulis di
+# apps/web/scripts/build-android.ps1 yang memang ikut repo. Tanpa pengecualian
+# ini, satu-satunya cara membangun APK dari VS Code hilang setiap kali repo
+# dipindah — dan repo inilah yang dibawa saat migrasi.
+!.vscode/tasks.json
 .idea/
 .DS_Store
 Thumbs.db

@@ -13,9 +13,12 @@ import {
   ukuranBerkas,
   uriBerkas,
 } from './penyimpanan.js';
+import { siapkanAntrianSumber, simpanChapterSumber } from './unduhSumber.js';
 
 /**
- * Menyalin satu chapter dari server rumah ke penyimpanan HP.
+ * Menyalin satu chapter dari server rumah ke penyimpanan HP, dan antrean yang
+ * mengurus keduanya — chapter dari server rumah maupun chapter yang diambil
+ * langsung dari situs sumber (unduhSumber.js).
  *
  * Tiga hal yang membentuk seluruh berkas ini:
  *
@@ -30,6 +33,19 @@ import {
  * 3. Satu chapter sekaligus, bukan paralel antar chapter. "Simpan 10 chapter"
  *    yang menembak 10×3 permintaan berbarengan membuat server rumah — yang
  *    kadang sedang mengunduh dari situs sumber — kehabisan napas.
+ *
+ * Antrean di bagian bawah berkas ini melayani DUA jalur. Yang membedakannya
+ * hanya satu bidang di baris antrean: `sumber`. Kalau ada, chapternya diambil
+ * dari situs sumber lewat unduhSumber.js; kalau tidak, dari server rumah lewat
+ * simpanChapter di bawah. Kemajuan, pembatalan, penahanan saat jaringan putus,
+ * dan lencana di sidebar melewati jalan yang sama persis untuk keduanya —
+ * antrean yang bercabang di lebih dari satu tempat adalah antrean yang cabangnya
+ * akan berbeda diam-diam begitu salah satunya diperbaiki.
+ *
+ * Ketergantungannya SATU ARAH: berkas ini memanggil unduhSumber.js, tidak
+ * sebaliknya. Itu yang membuat keduanya boleh saling melengkapi tanpa lingkaran
+ * impor — dan itu pula alasan beberapa potongan kecil (ekstensi berkas, penanda
+ * pembatalan) sengaja tidak dibagi di antara keduanya.
  */
 
 const BATAS_SERENTAK = 3;
@@ -274,8 +290,26 @@ const statusHttp = (galat) => {
   return null;
 };
 
-const pesanGalat = (galat) => {
+/**
+ * @param {unknown} galat
+ * @param {boolean} dariSitusSumber jalur mana yang gagal
+ */
+const pesanGalat = (galat, dariSitusSumber = false) => {
   const status = statusHttp(galat);
+  /*
+   * Jalur sumber menjelaskan dirinya sendiri, dan itu bukan kemalasan.
+   *
+   * GalatSumber sudah membawa kalimat yang menyebut host, status, dan apakah
+   * yang menolak itu robots.txt atau penjaga bot (lihat jelaskanStatus di
+   * sumber/ambil.js). Menimpanya dengan "Server menjawab 403" di sini justru
+   * membuang satu-satunya keterangan yang membedakan "situsnya memblokir HP ini"
+   * dari "chapternya sudah dihapus" — dan menyebut "server rumah" untuk
+   * kegagalan yang sama sekali tidak melibatkannya.
+   */
+  if (dariSitusSumber) {
+    if (galat?.message) return galat.message;
+    return status !== null ? `Situs sumber menjawab ${status}` : 'Situs sumber tidak terjangkau';
+  }
   if (status === 404) return 'Chapter ini sudah tidak ada di server';
   if (status !== null) return `Server menjawab ${status}`;
   return galat?.message || galat?.error || 'Server rumah tidak terjangkau';
@@ -325,12 +359,25 @@ const pompa = async () => {
       store.dispatch(mulai(berikut));
       pembatalan = { chapterId: berikut.chapterId, batal: false };
 
+      // SATU bidang yang memutuskan seluruh percabangan jalur di berkas ini.
+      // Dibaca sekali ke variabel, bukan ditanyakan ulang di setiap tempat yang
+      // membutuhkannya: `berikut` berasal dari store dan bisa saja diganti
+      // benda lain di tengah await, dan dua pemeriksaan yang menjawab berbeda
+      // berarti chapternya diunduh lewat satu jalur lalu galatnya dijelaskan
+      // sebagai jalur yang lain.
+      const jalurSumber = Boolean(berikut.sumber);
+
       let tertahan = false;
       try {
-        await simpanChapter(berikut.chapterId, {
-          saatMaju: (selesai, total) => store.dispatch(maju({ selesai, total })),
-          batal: () => pembatalan?.batal === true,
-        });
+        await (jalurSumber
+          ? simpanChapterSumber(berikut, {
+              saatMaju: (selesai, total) => store.dispatch(maju({ selesai, total })),
+              batal: () => pembatalan?.batal === true,
+            })
+          : simpanChapter(berikut.chapterId, {
+              saatMaju: (selesai, total) => store.dispatch(maju({ selesai, total })),
+              batal: () => pembatalan?.batal === true,
+            }));
         store.dispatch(beres(berikut.chapterId));
       } catch (galat) {
         if (galat === DIBATALKAN) store.dispatch(beres(berikut.chapterId));
@@ -338,11 +385,13 @@ const pompa = async () => {
           // Chapternya dibiarkan di kepala antrean dan putarannya berhenti di
           // sini. Meneruskan hanya membuang seluruh sisa antrean ke kegagalan
           // yang sudah pasti sama — dan menghapus jejak apa saja yang tadi
-          // diantre. Dilanjutkan lagi oleh lanjutkanUnduhan() begitu server
-          // rumah terjangkau.
+          // diantre. Dilanjutkan lagi oleh lanjutkanUnduhan() begitu jaringan
+          // kembali: server rumah terjangkau, atau — untuk jalur sumber, yang
+          // tidak pernah menyentuh server rumah — jaringan HP-nya sendiri
+          // tersambung lagi. Keduanya dipicu dari CangkangAndroid.
           tertahan = true;
-          store.dispatch(tunda({ chapterId: berikut.chapterId, pesan: pesanGalat(galat) }));
-        } else store.dispatch(gagal({ chapterId: berikut.chapterId, pesan: pesanGalat(galat) }));
+          store.dispatch(tunda({ chapterId: berikut.chapterId, pesan: pesanGalat(galat, jalurSumber) }));
+        } else store.dispatch(gagal({ chapterId: berikut.chapterId, pesan: pesanGalat(galat, jalurSumber) }));
       } finally {
         pembatalan = null;
       }
@@ -358,6 +407,30 @@ const pompa = async () => {
 export const antrekanChapter = (daftar) => {
   store.dispatch(antrekan(daftar));
   pompa();
+};
+
+/**
+ * Antrekan chapter yang diambil LANGSUNG dari situs sumber.
+ *
+ * Bedanya dengan antrekanChapter hanya satu langkah di depan: id lokal tiap
+ * chapter harus dialokasikan lebih dulu (siapkanAntrianSumber), karena antrean
+ * di unduhanSlice berkunci chapterId — tanpa id, dedup "sudah diantre atau
+ * belum" tidak punya apa pun untuk dibandingkan, dan menekan tombolnya dua kali
+ * melahirkan dua unduhan untuk chapter yang sama.
+ *
+ * Alokasinya menulis index.json, jadi fungsi ini async sementara kembarannya
+ * tidak. Pemanggilnya menunggu — bukan karena hasilnya dibutuhkan, tapi supaya
+ * tombolnya bisa menampilkan "Menyiapkan…" alih-alih tampak tidak bereaksi
+ * selama dua puluh lima penulisan berturut-turut.
+ *
+ * @returns {Promise<Array>} baris antrean yang jadi, untuk dihitung pemanggilnya
+ */
+export const antrekanChapterSumber = async (spek) => {
+  const daftar = await siapkanAntrianSumber(spek);
+  if (daftar.length === 0) return daftar;
+  store.dispatch(antrekan(daftar));
+  pompa();
+  return daftar;
 };
 
 /**

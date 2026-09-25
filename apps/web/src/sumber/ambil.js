@@ -710,15 +710,164 @@ export const ambilPencarian = async (host, kata) => {
 
 /**
  * Halaman satu seri: sampul, sinopsis, genre, dan daftar chapternya.
- *
- * Milestone unduhan menambah saudaranya di sini, bukan di layar: satu
- * `ambilHalamanChapter` yang memanggil extractChapterPages lewat ambilHtml yang
- * sama. Sengaja BELUM ditulis — kode yang tidak dipanggil siapa pun tidak bisa
- * dibuktikan benar, dan yang menulisnya nanti berhak melihat bentuk yang
- * dibutuhkan antreannya sendiri.
  */
 export const ambilSeri = async (seriesUrl) => {
   const { extractSeries } = await mesinSumber();
   const { html, urlAkhir } = await ambilHtml(seriesUrl);
   return extractSeries(html, urlAkhir);
+};
+
+/**
+ * Halaman satu chapter: daftar URL gambarnya, urut halaman.
+ *
+ * Bentuknya mengikuti ambilSeri di atas — satu ambilHtml, satu extractor — dan
+ * `urlAkhir` DIKEMBALIKAN, tidak cuma dipakai di dalam. Pemanggilnya
+ * (offline/unduhSumber.js) memerlukannya sebagai Referer saat mengunduh
+ * gambarnya: yang dipercaya CDN situs sumber adalah alamat halaman yang
+ * BENAR-BENAR memuat gambar itu, dan halaman chapter kerap dialihkan (http→https,
+ * slug lama→slug baru) sehingga alamat yang diminta bukan alamat yang berlaku.
+ *
+ * `imageUrls` kosong TIDAK dilempar dari sini: bedanya "situsnya berganti tema"
+ * dan "chapternya memang belum ada gambarnya" cuma bisa dijelaskan oleh
+ * pemanggil yang tahu sedang mengunduh chapter apa.
+ *
+ * @param {string} urlChapter
+ * @returns {Promise<{ extractor:string, imageUrls:string[], hostFallbacks:object, urlAkhir:string }>}
+ */
+export const ambilHalamanChapter = async (urlChapter) => {
+  const { extractChapterPages } = await mesinSumber();
+  const { html, urlAkhir } = await ambilHtml(urlChapter);
+  return { ...extractChapterPages(html, urlAkhir), urlAkhir };
+};
+
+// ── Gambar halaman ────────────────────────────────────────────────────────
+
+/*
+ * Gambar tidak lewat ambilHtml, dan tiga pembatas di bawah adalah satu-satunya
+ * penjagaan yang tersisa untuknya.
+ *
+ * Alasannya bentuk datanya: berkas gambar diunduh @capacitor/file-transfer
+ * langsung ke disk dari sisi native (lihat unduh.js — jalur base64 lewat
+ * jembatan JS yang membuat aplikasi terbunuh kehabisan memori), jadi permintaan
+ * itu tidak pernah melewati permintaan() di berkas ini. Yang masih bisa
+ * dikerjakan dari sini: menentukan headernya dan memeriksa alamatnya.
+ */
+
+/**
+ * Host yang jelas menunjuk ke dalam jaringan sendiri.
+ *
+ * Padanannya di server adalah hostPublik() di utils/validators.js, dan
+ * kebutuhannya sama persis: URL gambar datang dari HTML milik situs sumber, yaitu
+ * teks dari pihak lain. Satu situs sumber yang disusupi cukup menyisipkan
+ * <img src="http://192.168.1.1/..."> untuk membuat setiap HP yang menyimpan
+ * chapter itu mengetuk router pemiliknya sendiri — dari dalam jaringan rumahnya,
+ * tempat banyak perangkat masih percaya siapa pun yang bisa menjangkaunya.
+ */
+const hostKeDalam = (hostname) => {
+  const host = String(hostname ?? '').toLowerCase().replace(/^\[|\]$/g, '');
+  if (!host) return true;
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return true;
+  if (host.endsWith('.internal') || host.endsWith('.home.arpa')) return true;
+
+  if (host.includes(':')) {
+    if (host === '::' || host === '::1') return true;
+    if (/^f[cd][0-9a-f]{2}:/.test(host)) return true; // fc00::/7 unique-local
+    if (/^fe[89ab][0-9a-f]:/.test(host)) return true; // fe80::/10 link-local
+    const tertanam = host.match(/(\d{1,3}(?:\.\d{1,3}){3})$/);
+    return tertanam ? hostKeDalam(tertanam[1]) : false;
+  }
+
+  // IPv4 dalam bentuk apa pun: bertitik, satu angka desimal (2130706433 =
+  // 127.0.0.1), atau heksadesimal. Ketiganya diterima browser.
+  let angka = null;
+  const bertitik = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (bertitik) {
+    const oktet = bertitik.slice(1).map(Number);
+    if (oktet.some((satu) => satu > 255)) return true;
+    angka = ((oktet[0] << 24) >>> 0) + (oktet[1] << 16) + (oktet[2] << 8) + oktet[3];
+  } else if (/^\d+$/.test(host)) {
+    angka = Number(host) >>> 0;
+  } else if (/^0x[0-9a-f]+$/i.test(host)) {
+    angka = Number.parseInt(host, 16) >>> 0;
+  }
+
+  if (angka === null) return false; // nama domain biasa
+
+  const dalam = (bawah, atas) => angka >= bawah && angka <= atas;
+  return (
+    dalam(0x00000000, 0x00ffffff) || // 0.0.0.0/8
+    dalam(0x7f000000, 0x7fffffff) || // 127.0.0.0/8
+    dalam(0x0a000000, 0x0affffff) || // 10.0.0.0/8
+    dalam(0xac100000, 0xac1fffff) || // 172.16.0.0/12
+    dalam(0xc0a80000, 0xc0a8ffff) || // 192.168.0.0/16
+    dalam(0xa9fe0000, 0xa9feffff) || // 169.254.0.0/16
+    dalam(0x64400000, 0x647fffff) || // 100.64.0.0/10 CGNAT
+    dalam(0xe0000000, 0xffffffff) //   multicast & sisanya
+  );
+};
+
+/**
+ * Alamat gambar yang boleh diunduh, atau null.
+ *
+ * Daftar host bawaan TIDAK diberlakukan di sini, dan itu keputusan sadar yang
+ * sama dengan yang diambil server (sanitizeSourceUrl dengan anyPublicHost):
+ * gambar komik hampir selalu dilayani CDN dengan nama yang sama sekali lain dari
+ * situsnya (image2.komiku.to, cdn.*.net) dan berganti tanpa pemberitahuan.
+ * Memaksanya lewat daftar bawaan berarti hampir semua chapter gagal diunduh
+ * dengan pesan yang menuduh daftar host. Yang dituntut: alamatnya datang dari
+ * halaman yang SUDAH lolos daftar itu, skemanya http/https, dan tujuannya bukan
+ * di dalam jaringan sendiri.
+ */
+export const alamatGambarSah = (urlTeks) => {
+  let target;
+  try {
+    target = new URL(String(urlTeks));
+  } catch {
+    return null;
+  }
+  if (target.protocol !== 'http:' && target.protocol !== 'https:') return null;
+  if (hostKeDalam(target.hostname)) return null;
+  return target.toString();
+};
+
+/**
+ * Header untuk permintaan gambar ke situs sumber.
+ *
+ * Referer bukan hiasan: sebagian besar CDN komik menjawab 403 untuk permintaan
+ * gambar yang tidak menyebut halaman asalnya — itu cara termurah mereka menolak
+ * pengikis dan hotlink. Server rumah sudah memakai aturan yang sama
+ * (httpClient.fetchImage menerima referer dari chapter_url), dan tanpa ini jalur
+ * HP akan gagal untuk situs yang di server justru berhasil.
+ */
+export const headerGambar = (urlHalaman) => ({
+  'User-Agent': USER_AGENT,
+  Accept: 'image/avif,image/webp,image/jpeg,image/png,*/*;q=0.8',
+  'Accept-Language': 'id-ID,id;q=0.9,en;q=0.8',
+  Referer: urlHalaman,
+});
+
+/**
+ * Alamat yang layak dicoba untuk satu gambar: aslinya dulu, lalu hasil
+ * penukaran host sesuai peta yang diumumkan halaman chapter itu sendiri
+ * (extractChapterPages.hostFallbacks).
+ *
+ * Kembaran daftarKandidat() di apps/api/src/jobs/downloadQueue.js, dan ada
+ * karena alasan yang sama: ada chapter yang host gambar utamanya benar-benar
+ * mati sementara host cadangannya melayani berkas yang sama dengan normal.
+ * Tanpa mencobanya, chapter seperti itu jadi jalan buntu permanen meski
+ * halamannya sehat.
+ */
+export const kandidatGambar = (url, cadangan) => {
+  const kandidat = [];
+  const tambah = (alamat) => {
+    const sah = alamatGambarSah(alamat);
+    if (sah && !kandidat.includes(sah)) kandidat.push(sah);
+  };
+
+  tambah(url);
+  Object.entries(cadangan ?? {}).forEach(([dari, ke]) => {
+    if (!String(url).includes(dari)) return;
+    tambah(String(url).split(dari).join(ke));
+  });
+  return kandidat;
 };

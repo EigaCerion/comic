@@ -17,7 +17,8 @@ import { usePembaruan } from './pembaruan.js';
  * masalah yang sama.
  */
 export const KabarPembaruan = () => {
-  const { tampilkanKabar, versiRilis, urlUnduh, catatan, namaRilis, abaikanPembaruan } = usePembaruan();
+  const { tampilkanKabar, versiRilis, catatan, namaRilis, sedangDiunduh, abaikanPembaruan, mulaiUnduhPembaruan } =
+    usePembaruan();
   const [catatanTerbuka, setCatatanTerbuka] = useState(false);
 
   if (!tampilkanKabar) return null;
@@ -26,16 +27,25 @@ export const KabarPembaruan = () => {
     <div role="status" className="gutter-app bg-naruto/10 py-2 text-xs text-naruto">
       <div className="flex items-center gap-3">
         <span className="min-w-0 flex-1">
-          <span className="font-semibold">NaruReader {versiRilis}</span> sudah tersedia
-          {namaRilis ? ` — ${namaRilis}` : ''}.
+          <span className="font-semibold">NaruReader {versiRilis}</span>{' '}
+          {/* Setelah unduhannya dibuka, kalimatnya berubah jadi langkah
+              BERIKUTNYA. Pita yang tetap berbunyi "sudah tersedia" membuat orang
+              menekan Unduh berulang kali dan menumpuk berkas yang sama. */}
+          {sedangDiunduh
+            ? 'sedang diunduh di browser — pasang dari notifikasi unduhan setelah selesai.'
+            : `sudah tersedia${namaRilis ? ` — ${namaRilis}` : ''}.`}
         </span>
 
-        {/* Lihat penjelasan panjang di KartuPembaruan.jsx: <a> biasa, karena
-            navigasi ke host luar diserahkan jembatan Capacitor ke Android lewat
-            Intent.ACTION_VIEW. Pemasangan APK-nya tetap urusan Android. */}
-        <a href={urlUnduh} target="_blank" rel="noreferrer" className="flex-none font-semibold underline">
-          Unduh
-        </a>
+        {/* Lihat penjelasan panjang di KartuPembaruan.jsx: tombol, bukan <a>,
+            supaya browsernya berdiri sebagai tugas tersendiri dan unduhannya
+            tidak ikut terdorong ke belakang saat orangnya kembali ke sini. */}
+        <button
+          type="button"
+          className="flex-none font-semibold underline"
+          onClick={() => mulaiUnduhPembaruan()}
+        >
+          {sedangDiunduh ? 'Buka lagi' : 'Unduh'}
+        </button>
         <button type="button" className="flex-none font-semibold underline" onClick={() => abaikanPembaruan()}>
           Nanti
         </button>

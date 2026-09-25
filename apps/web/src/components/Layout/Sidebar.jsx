@@ -87,7 +87,13 @@ export const Sidebar = () => {
       <aside
         className={[
           'fixed inset-y-0 left-0 z-40 flex w-64 flex-col gap-6 border-r border-paper-line',
-          'bg-paper-soft px-4 py-5 transition-transform',
+          // py-5 dipecah jadi dua dan dijumlahkan dengan zona aman perangkat
+          // (theme.css). Drawer di HP `fixed inset-y-0`, jadi ia membentang dari
+          // tepi ATAS layar sampai tepi bawah — tepat melewati status bar dan
+          // bilah navigasi. Ditulis sebagai calc() di utilitas, bukan memakai
+          // .aman-atas dari globals.css: utilitas Tailwind selalu menang atas
+          // @layer components, jadi py-5 akan diam-diam membatalkannya.
+          'bg-paper-soft px-4 pb-[calc(1.25rem_+_var(--aman-bawah))] pt-[calc(1.25rem_+_var(--aman-atas))] transition-transform',
           'dark:border-night-line dark:bg-night-soft',
           // Desktop: menempel di layar, bukan meregang setinggi halaman.
           //

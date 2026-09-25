@@ -107,6 +107,51 @@ export const CangkangAndroid = () => {
     }
   }, [terhubung]);
 
+  /*
+   * Antrean juga dibangunkan oleh JARINGAN HP-nya sendiri, bukan hanya oleh
+   * server rumah.
+   *
+   * Efek di atas saja sudah cukup selama satu-satunya sumber chapter adalah
+   * server rumah. Sejak antrean ikut melayani chapter yang diambil langsung
+   * dari situs sumber (offline/unduhSumber.js), ia tidak lagi: unduhan sumber
+   * yang tertahan karena Wi-Fi putus menunggu `terhubung` menyala, dan pada HP
+   * yang MEMANG TIDAK PUNYA server rumah — orang yang cuma memasang APK-nya,
+   * yang justru paling membutuhkan jalur ini — `terhubung` tidak akan pernah
+   * menyala sekali pun. Sepuluh chapter yang tadi diantre diam selamanya
+   * meski jaringannya sudah pulih sejak lama.
+   *
+   * Pendengarnya sendiri, tidak menumpang pantauKoneksi() di terhubung.js:
+   * yang di sana memicu pemeriksaan SERVER, dan yang dibutuhkan di sini adalah
+   * kejadian mentahnya. Memanggil lanjutkanUnduhan() berkali-kali tidak
+   * berbahaya — pompa() menolak kalau sudah berjalan, dan antrean kosong tidak
+   * menyalakan apa pun.
+   */
+  useEffect(() => {
+    if (!ASLI_NATIF) return undefined;
+
+    let pegangan = null;
+    let dibatalkan = false;
+
+    import('@capacitor/network')
+      .then(({ Network }) =>
+        Network.addListener('networkStatusChange', ({ connected }) => {
+          if (connected) lanjutkanUnduhan();
+        }),
+      )
+      .then((daftar) => {
+        if (dibatalkan) daftar.remove();
+        else pegangan = daftar;
+      })
+      .catch(() => {
+        /* perangkat tanpa plugin Network: jalur server rumah di atas tetap ada */
+      });
+
+    return () => {
+      dibatalkan = true;
+      pegangan?.remove();
+    };
+  }, []);
+
   // Dilempar ke rak simpanan SEKALI saat jaringan putus, bukan setiap render:
   // sesudah itu orangnya bebas kembali ke halaman mana pun, termasuk untuk
   // melihat sendiri bahwa memang belum ada isinya.

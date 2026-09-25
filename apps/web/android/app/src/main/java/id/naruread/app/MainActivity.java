@@ -1,77 +1,53 @@
 package id.naruread.app;
 
 import android.os.Bundle;
-import android.view.View;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.BridgeActivity;
 
 /**
- * Cangkang Android — satu-satunya tugas tambahannya: menjauhkan isi web dari
- * status bar dan bilah navigasi.
+ * Cangkang Android. Tidak ada tugas tambahan: seluruh isi aplikasi adalah
+ * halaman web yang dijalankan Capacitor.
  *
- * Android 15 ke atas memaksa aplikasi bertarget SDK 35+ menggambar tepi-ke-tepi
- * (variables.gradle di sini: targetSdkVersion 36). Jendelanya dibentangkan
- * sampai ke belakang status bar, jadi tanpa penanganan inset, TopBar aplikasi
- * berakhir tertimpa jam, ikon notifikasi, dan indikator baterai — breadcrumb dan
- * kotak pencarian jadi separuh terbaca.
+ * Yang pernah ada di sini — pemasangan inset sistem sebagai padding WebView —
+ * sudah DIBUANG, dan kenapa ia tidak bekerja layak dicatat supaya tidak
+ * ditulis ulang oleh orang berikutnya (termasuk saya):
  *
- * Kenapa di sini, bukan lewat android:fitsSystemWindows di layout:
- * res/layout/activity_main.xml TIDAK PERNAH diinflasi. BridgeActivity milik
- * Capacitor 8 memanggil setContentView(R.layout.capacitor_bridge_layout_main) —
- * layout dari dalam paket capacitor-android, yang tidak memuat bendera itu.
- * Bendera yang dipasang di activity_main.xml karena itu tidak berpengaruh sama
- * sekali: berkasnya sisa cetakan Capacitor lama, dan perbaikan yang ditulis di
- * sana hanya tampak benar saat dibaca. Menimpa layout perpustakaan dengan
- * berkas bernama sama juga ditolak sebagai jalan keluar — ia menempelkan
- * aplikasi ini pada nama layout internal Capacitor yang boleh berubah kapan pun
- * tanpa peringatan, dan kalau berubah, gejalanya kembali lagi tanpa satu baris
- * pun berubah di repo ini.
+ * Capacitor 8 punya plugin bawaan SystemBars
+ * (com.getcapacitor.plugin.SystemBars) yang selalu terdaftar, bahkan tanpa satu
+ * baris pun konfigurasi. Ia memasang OnApplyWindowInsetsListener-nya sendiri
+ * pada decorView jendela, lalu memilih salah satu dari dua perilaku:
  *
- * Yang dipakai: inset diminta langsung pada WebView-nya lewat androidx, lalu
- * dipasang sebagai padding. Padding, bukan margin, supaya WebView tetap
- * mengisi jendela dan warna latarnya (capacitor.config.json: backgroundColor)
- * yang menutup jalur di belakang bilah sistem.
+ *  - WebView LAMA (< 140): ia memberi jarak setinggi bilah sistem langsung pada
+ *    decorView, lalu meneruskan inset bernilai NOL ke anak-anaknya. Listener
+ *    apa pun pada WebView karena itu menerima nol dan tidak memberi jarak apa
+ *    pun — yang benar, karena jaraknya sudah diberikan di atas.
+ *  - WebView BARU (>= 140) pada halaman dengan viewport-fit=cover — keadaan HP
+ *    penguji: ia justru BERHENTI memberi jarak dan menyerahkan seluruhnya ke
+ *    lapisan web lewat env(safe-area-inset-*) dan variabel CSS
+ *    --safe-area-inset-* yang ia suntikkan sendiri.
  *
- * Reader tetap memakai seluruh tinggi layar. ModeBacaNatif memanggil
- * StatusBar.hide(), yang di Capacitor 8 berjalan lewat
- * WindowInsetsControllerCompat.hide(statusBars()); begitu bilahnya disembunyikan
- * insetnya menjadi nol, listener ini dipanggil ulang, dan paddingnya ikut hilang
- * sendiri. Tidak ada angka tinggi status bar yang perlu ditebak atau disimpan.
+ * Artinya jarak status bar bukan urusan berkas ini sama sekali, dan menambah
+ * padding di sini pada jalur kedua justru berarti menghitungnya DUA KALI.
+ * Tempatnya sekarang: --aman-atas/--aman-bawah di apps/web/src/styles/theme.css,
+ * dipakai TopBar, Sidebar, dan footer.
+ *
+ * Satu-satunya setelan yang tersisa ada di capacitor.config.json —
+ * plugins.SystemBars.initialViewportFitValueHint = "cover". Berkas JSON tidak
+ * bisa memuat komentar, jadi alasannya ditulis di sini: tanpa petunjuk itu
+ * SystemBars memulai dengan anggapan halaman tidak memakai viewport-fit=cover,
+ * memberi jarak bilah sistem secara native, lalu membatalkannya begitu meta
+ * viewport terbaca setelah halaman tampil — seluruh isi aplikasi melompat naik
+ * satu tinggi status bar tepat di depan mata, setiap kali aplikasi dibuka.
+ * index.html memang selalu memuat viewport-fit=cover, jadi jawabannya sudah
+ * diketahui sejak awal.
  */
 public class MainActivity extends BridgeActivity {
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
+        // WAJIB sebelum super.onCreate(): di situlah BridgeActivity membangun
+        // jembatannya dan mengunci daftar plugin. Didaftarkan sesudahnya, plugin
+        // ini ada di APK tapi tidak pernah bisa dipanggil dari JavaScript.
+        registerPlugin(BukaDiLuar.class);
         super.onCreate(savedInstanceState);
-
-        // R milik capacitor-android, bukan R aplikasi: sejak AGP 8 kelas R tidak
-        // lagi transitif secara bawaan, jadi id dari modul perpustakaan tidak
-        // muncul di id.naruread.app.R. BridgeActivity sendiri merujuknya dengan
-        // cara yang sama.
-        final View webView = findViewById(com.getcapacitor.android.R.id.webview);
-
-        // super.onCreate() menyerah tanpa WebView (setContentView(R.layout.no_webview)
-        // di BridgeActivity) — perangkat tanpa WebView Sistem tidak boleh dijatuhkan
-        // lagi di sini oleh NullPointerException.
-        if (webView == null) return;
-
-        ViewCompat.setOnApplyWindowInsetsListener(webView, (view, windowInsets) -> {
-            // displayCutout ikut diminta, bukan hanya systemBars: pada HP
-            // berlubang kamera dalam mode lanskap, takiknya berada di tepi KIRI
-            // atau KANAN tempat tidak ada bilah sistem sama sekali, dan hanya
-            // systemBars() membuat tombol pertama di baris itu tertutup lensa.
-            Insets aman = windowInsets.getInsets(
-                WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout()
-            );
-            view.setPadding(aman.left, aman.top, aman.right, aman.bottom);
-
-            // Inset diteruskan apa adanya, tidak dikonsumsi: papan ketik
-            // (Type.ime()) berjalan di jalur yang sama, dan mengonsumsi di sini
-            // memutus penyesuaian yang membuat kotak pencarian tetap terlihat
-            // saat papan ketik terbuka.
-            return windowInsets;
-        });
     }
 }

@@ -59,6 +59,14 @@ export const App = () => {
           {IS_APP && <Route path="/sumber" element={<Sumber />} />}
           {IS_APP && <Route path="/sumber/seri" element={<SumberSeri />} />}
           <Route path="/browse" element={<Browse />} />
+          {/* Tujuan tombol Kembali di reader untuk komik yang datang dari situs
+              sumber. Slug komik itu dibentuk sebagai "sumber/<comicId>"
+              (offline/unduhSumber.js) justru supaya ia mendarat di sini dan
+              bukan di /comic/:slug — yang hidup dari koleksi server rumah dan
+              akan menjawab "tidak ditemukan" untuk komik yang memang tidak
+              pernah ada di sana. Rute tiga segmen ini menang atas /comic/:slug
+              yang dua segmen, jadi keduanya tidak berebut. */}
+          {IS_APP && <Route path="/comic/sumber/:comicId" element={<Offline />} />}
           <Route path="/comic/:slug" element={<ComicDetail />} />
           <Route path="/downloads" element={<Downloads />} />
           <Route path="/upload" element={<Upload />} />

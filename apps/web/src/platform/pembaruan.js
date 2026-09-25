@@ -34,6 +34,17 @@ const AWALAN_UNDUH = `/${PEMILIK}/${REPO}/releases/download/`.toLowerCase();
  */
 export const KUNCI_PEMBARUAN = 'naruread:pembaruan';
 export const KUNCI_ABAIKAN = 'naruread:pembaruan-diabaikan';
+/*
+ * Versi yang unduhannya SUDAH pernah dibuka di browser.
+ *
+ * Kunci tersendiri, bukan satu bidang di dalam KUNCI_PEMBARUAN, karena
+ * tulisSimpanan() menimpa seluruh isi kunci itu setiap kali pemeriksaan
+ * berhasil — sama persis dengan alasan KUNCI_ABAIKAN berdiri sendiri.
+ *
+ * Yang disimpan nomor versinya, bukan bendera: petunjuk pemasangan harus
+ * kembali hilang begitu ada rilis yang lebih baru lagi.
+ */
+export const KUNCI_UNDUH = 'naruread:pembaruan-diunduh';
 
 const SEHARI_MS = 24 * 60 * 60 * 1000;
 
@@ -265,21 +276,22 @@ const prefs = async () => {
 const bacaSimpanan = async () => {
   try {
     const { Preferences } = await prefs();
-    const [tersimpan, diabaikan] = await Promise.all([
+    const [tersimpan, diabaikan, unduhDimulai] = await Promise.all([
       Preferences.get({ key: KUNCI_PEMBARUAN }),
       Preferences.get({ key: KUNCI_ABAIKAN }),
+      Preferences.get({ key: KUNCI_UNDUH }),
     ]);
     let isi = null;
     if (tersimpan.value) {
       const urai = JSON.parse(tersimpan.value);
       if (urai && typeof urai === 'object') isi = urai;
     }
-    return { isi, diabaikan: diabaikan.value || null };
+    return { isi, diabaikan: diabaikan.value || null, unduhDimulai: unduhDimulai.value || null };
   } catch {
     // Penyimpanan tidak terbaca (browser mode privat saat menguji build android
     // di laptop, atau JSON lama yang bentuknya sudah berubah). Bukan alasan
     // untuk tidak memeriksa: paling buruk pemeriksaannya dianggap belum pernah.
-    return { isi: null, diabaikan: null };
+    return { isi: null, diabaikan: null, unduhDimulai: null };
   }
 };
 
@@ -339,6 +351,8 @@ const keadaanAwal = {
   sedangMemeriksa: false,
   galat: null,
   diabaikan: null,
+  /** Versi yang unduhannya sudah dibuka di browser, atau null. */
+  unduhDimulai: null,
 };
 
 let keadaan = keadaanAwal;
@@ -540,7 +554,7 @@ export const siapkanPembaruan = () => {
      */
     bacaVersiTerpasang().then((versi) => siarkan({ versiTerpasang: versi }));
 
-    const { isi, diabaikan } = await bacaSimpanan();
+    const { isi, diabaikan, unduhDimulai } = await bacaSimpanan();
 
     /*
      * Jawaban TERSIMPAN tidak boleh menimpa jawaban yang BARU didapat.
@@ -568,6 +582,10 @@ export const siapkanPembaruan = () => {
       dicobaPada: dicoba,
       // Sama untuk "Nanti" yang barusan ditekan: yang ada di memori lebih baru.
       diabaikan: keadaan.diabaikan ?? diabaikan,
+      // Idem untuk tombol "Unduh": penyiapan ini bisa selesai SESUDAH orangnya
+      // menekannya, dan menimpa dengan nilai lama akan menghapus petunjuk
+      // pemasangan tepat setelah ia muncul.
+      unduhDimulai: keadaan.unduhDimulai ?? unduhDimulai,
       ...(belumAdaJawaban
         ? {
             versiRilis: typeof isi?.versiRilis === 'string' ? isi.versiRilis : null,
@@ -591,6 +609,57 @@ export const siapkanPembaruan = () => {
   })();
 
   return penyiapan;
+};
+
+/**
+ * Buka unduhan APK versi terbaru di browser perangkat, lalu ingat bahwa itu
+ * sudah dilakukan.
+ *
+ * Kenapa lewat browser dan bukan diunduh sendiri: memasang APK dari dalam
+ * aplikasi menuntut izin REQUEST_INSTALL_PACKAGES plus FileProvider — persis
+ * dua hal yang membuat aplikasi hasil sideload dicurigai Play Protect, dan
+ * aplikasi ini baru saja selesai membereskan peringatan itu. Jadi yang
+ * dikerjakan tetap: buka tautannya, biarkan pengunduh sistem bekerja,
+ * pemasangannya dimulai orangnya sendiri dari notifikasi unduhan.
+ *
+ * Yang BERUBAH adalah caranya membuka. Dulu ini sebuah <a href> biasa, dan
+ * navigasi ke host luar diserahkan Bridge.launchIntent() milik Capacitor —
+ * yang memanggil startActivity TANPA FLAG_ACTIVITY_NEW_TASK, sehingga browser
+ * masuk ke tumpukan tugas NaruReader. Untuk unduhan 30-an MB itu berarti
+ * jendela yang sedang mengunduh ikut terdorong ke belakang setiap kali orangnya
+ * kembali ke aplikasi — bentuk yang dilaporkan sebagai "unduhan nyangkut di
+ * saat-saat terakhir". Plugin BukaDiLuar membukanya sebagai tugas tersendiri.
+ *
+ * Penandanya disimpan SESUDAH browser benar-benar terbuka. Petunjuk "lanjutkan
+ * pemasangan dari notifikasi" yang muncul padahal tidak ada yang terbuka lebih
+ * buruk daripada tidak ada petunjuk sama sekali.
+ *
+ * @returns {Promise<boolean>} true kalau browser benar-benar terbuka.
+ */
+export const mulaiUnduhPembaruan = async () => {
+  // Diperiksa ULANG di sini, bukan dipercaya karena sudah tersimpan: keadaan di
+  // memori bisa berasal dari Preferences, dan Preferences bisa disunting di
+  // perangkat yang di-root.
+  const url = urlUnduhAman(keadaan.urlUnduh);
+  const versi = keadaan.versiRilis;
+  if (!url || !versi) return false;
+
+  try {
+    const { bukaDiLuar } = await import('./bukaLuar.js');
+    await bukaDiLuar(url);
+  } catch (galat) {
+    siarkan({ galat: galat?.message || 'Tautan unduhan tidak bisa dibuka' });
+    return false;
+  }
+
+  siarkan({ unduhDimulai: versi, galat: null });
+  try {
+    const { Preferences } = await prefs();
+    await Preferences.set({ key: KUNCI_UNDUH, value: versi });
+  } catch {
+    /* tidak bertahan sampai aplikasi dibuka lagi; sesi ini tetap ingat */
+  }
+  return true;
 };
 
 /**
@@ -637,7 +706,12 @@ export const usePembaruan = () => {
     // versi itu, DAN ada tautan unduhan yang lolos pemeriksaan. Tanpa tautan,
     // kabarnya cuma membuat cemas tanpa memberi jalan keluar.
     tampilkanKabar: adaPembaruan && Boolean(kini.urlUnduh) && kini.diabaikan !== kini.versiRilis,
+    // Unduhan untuk versi INI yang sudah dibuka — bukan sekadar "pernah menekan
+    // Unduh". Penanda dari rilis sebelumnya tidak boleh menyuruh siapa pun
+    // memasang berkas yang sudah tidak relevan.
+    sedangDiunduh: adaPembaruan && kini.unduhDimulai === kini.versiRilis,
     cekPembaruan,
     abaikanPembaruan,
+    mulaiUnduhPembaruan,
   };
 };

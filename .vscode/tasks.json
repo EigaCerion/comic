@@ -1,0 +1,70 @@
+{
+  // Tugas build NaruReader untuk VS Code.
+  //
+  // Jalankan lewat Ctrl+Shift+P → "Tasks: Run Task", atau Ctrl+Shift+B untuk
+  // yang bertanda default (APK rilis).
+  //
+  // Semuanya dipaksa berjalan di PowerShell, bukan shell bawaan terminal yang
+  // sedang aktif: skrip build-android.ps1 dan perintah-perintah di
+  // docs/KOMPILASI-APK.md semuanya sintaks PowerShell, dan menjalankannya di
+  // Git Bash gagal dengan pesan yang tidak menyebut sebabnya.
+  "version": "2.0.0",
+  "options": {
+    "cwd": "${workspaceFolder}",
+    "shell": {
+      "executable": "powershell.exe",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+    }
+  },
+  "presentation": {
+    "echo": true,
+    "reveal": "always",
+    "panel": "dedicated",
+    "clear": true
+  },
+  "tasks": [
+    {
+      "label": "APK rilis",
+      "detail": "Bundel android + cap sync + assembleRelease, ditandatangani kunci rilis. Hasilnya di apps/web/dist-apk.",
+      "type": "shell",
+      "command": ".\\apps\\web\\scripts\\build-android.ps1",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "APK rilis (timpa versi yang sudah ada)",
+      "detail": "Hanya kalau APK versi ini BELUM pernah diunggah. Biner baru semestinya versi baru.",
+      "type": "shell",
+      "command": ".\\apps\\web\\scripts\\build-android.ps1 -Timpa",
+      "problemMatcher": []
+    },
+    {
+      "label": "APK debug",
+      "detail": "Untuk dicoba di HP sendiri, tanpa menyentuh kunci rilis. Tidak bisa dipasang menimpa APK rilis.",
+      "type": "shell",
+      "command": ".\\apps\\web\\scripts\\build-android.ps1 -ModeDebug",
+      "problemMatcher": []
+    },
+    {
+      "label": "Bundel android + cap sync (tanpa Gradle)",
+      "detail": "Langkah 4.3 dan 4.4 saja — untuk memeriksa bundelnya jadi sebelum menunggu Gradle.",
+      "type": "shell",
+      "command": "npm run build:android --workspace apps/web",
+      "problemMatcher": []
+    },
+    {
+      "label": "Periksa sebelum build (lint + uji)",
+      "detail": "eslint, uji offline (19), uji rentang (23). Jauh lebih cepat daripada satu build Gradle.",
+      "type": "shell",
+      "command": "npm run lint --workspace apps/web; if ($?) { npm run test:offline }; if ($?) { npm run test:rentang }",
+      "problemMatcher": []
+    },
+    {
+      "label": "Periksa tanda tangan APK",
+      "detail": "Sidik jari SHA-256 harus sama dengan rilis sebelumnya, kalau tidak APK-nya tidak bisa dipasang menimpa.",
+      "type": "shell",
+      "command": "$v = (Get-Content apps\\web\\package.json -Raw | ConvertFrom-Json).version; & 'D:\\Android\\sdk\\build-tools\\36.0.0\\apksigner.bat' verify --print-certs --verbose \"apps\\web\\dist-apk\\NaruReader-$v.apk\"",
+      "problemMatcher": []
+    }
+  ]
+}

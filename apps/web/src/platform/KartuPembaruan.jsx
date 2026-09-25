@@ -16,25 +16,23 @@ import { formatRelativeTime } from '../utils/format.js';
  */
 
 /**
- * Tombol unduh memakai <a>, BUKAN plugin pembuka tautan.
+ * Tombol unduh memanggil mulaiUnduhPembaruan(), BUKAN sebuah <a href>.
  *
- * Aplikasi ini belum pernah membuka URL luar, jadi tidak ada cara lama yang
- * bisa diikuti — dan menambah @capacitor/browser hanya untuk satu tombol
- * berarti menambah dependensi native (plus Custom Tabs) demi sesuatu yang sudah
- * dikerjakan jembatan Capacitor sendiri: navigasi ke host di luar aplikasi
- * jatuh ke Bridge.launchIntent() (capacitor-android, Bridge.java), yang
- * menembakkan Intent.ACTION_VIEW dan menyerahkannya ke Android. Untuk berkas
- * .apk, itu berarti pengunduh sistem.
- *
- * window.open() sengaja dihindari: di WebView tanpa setSupportMultipleWindows
- * ia bisa diabaikan diam-diam, dan tombol yang tidak melakukan apa-apa lebih
- * buruk daripada tombol yang membuka tab.
+ * Dulu memang <a href target="_blank">, dengan alasan bahwa jembatan Capacitor
+ * sudah menyerahkan host luar ke Android lewat Intent.ACTION_VIEW. Benar, tapi
+ * tidak cukup: Bridge.launchIntent() memanggil startActivity TANPA
+ * FLAG_ACTIVITY_NEW_TASK, jadi browsernya berdiri DI DALAM tumpukan tugas
+ * NaruReader. Untuk berkas 30-an MB, kembali ke aplikasi ini berarti mendorong
+ * jendela yang sedang mengunduh ke belakang — dan itulah yang terlihat sebagai
+ * unduhan yang berhenti tepat di akhir. Penjelasan lengkapnya di
+ * android/.../BukaDiLuar.java.
  *
  * PEMASANGANNYA tetap dikerjakan Android, bukan aplikasi ini. Memasang sendiri
  * dari dalam aplikasi menuntut izin REQUEST_INSTALL_PACKAGES plus FileProvider
  * untuk menyerahkan berkasnya ke installer — izin yang persis membuat aplikasi
  * hasil sideload terlihat mencurigakan, demi menghemat dua ketukan. Sengaja di
- * luar cakupan.
+ * luar cakupan; yang ditambahkan sebagai gantinya adalah petunjuk langkah demi
+ * langkah di bawah tombolnya.
  */
 const waktuRelatif = (ms) => (Number.isFinite(ms) ? formatRelativeTime(new Date(ms).toISOString()) : 'belum pernah');
 
@@ -55,7 +53,9 @@ export const KartuPembaruan = () => {
     sedangMemeriksa,
     galat,
     adaPembaruan,
+    sedangDiunduh,
     cekPembaruan,
+    mulaiUnduhPembaruan,
   } = usePembaruan();
 
   // Enam keadaan yang benar-benar berbeda, dan hanya SATU di antaranya boleh
@@ -112,15 +112,36 @@ export const KartuPembaruan = () => {
           {sedangMemeriksa ? 'Memeriksa…' : 'Cek pembaruan'}
         </button>
         {adaPembaruan && urlUnduh && (
-          <a href={urlUnduh} target="_blank" rel="noreferrer" className="btn-accent flex-1 text-center">
-            Unduh {versiRilis}
-          </a>
+          <button type="button" className="btn-accent flex-1 text-center" onClick={() => mulaiUnduhPembaruan()}>
+            {sedangDiunduh ? 'Buka unduhan lagi' : `Unduh ${versiRilis}`}
+          </button>
         )}
       </div>
 
+      {/* Petunjuk baru muncul SETELAH browser benar-benar terbuka. Ditulis
+          sebagai langkah bernomor karena tiga langkah terakhirnya memang tidak
+          bisa ditebak orang yang belum pernah memasang APK: pemasangannya tidak
+          dimulai dari aplikasi ini, melainkan dari notifikasi unduhan, dan
+          Android akan menyela sekali dengan permintaan izin. */}
+      {sedangDiunduh && (
+        <div className="mt-3 rounded-lg bg-naruto/10 px-3 py-2 text-xs">
+          <p className="font-semibold text-naruto">Unduhan berjalan di browser</p>
+          <ol className="mt-1 list-decimal space-y-1 pl-4 opacity-70">
+            <li>Biarkan browser menyelesaikannya. Aplikasi ini boleh ditutup.</li>
+            <li>Buka notifikasi unduhan selesai, atau menu Unduhan di browser.</li>
+            <li>
+              Ketuk NaruReader-{versiRilis}.apk, izinkan pemasangan dari sumber itu, lalu Pasang.
+            </li>
+          </ol>
+          <p className="mt-2 opacity-70">
+            Komik yang sudah tersimpan di HP tidak ikut terhapus dan tidak perlu diunduh ulang.
+          </p>
+        </div>
+      )}
+
       <p className="mt-3 text-xs opacity-50">
-        Diperiksa otomatis paling sering sekali sehari. Berkasnya diunduh Android seperti berkas
-        biasa; pemasangannya dimulai dari notifikasi unduhan.
+        Diperiksa otomatis paling sering sekali sehari. Berkasnya diunduh browser perangkat seperti
+        berkas biasa; pemasangannya dimulai dari notifikasi unduhan.
       </p>
     </section>
   );

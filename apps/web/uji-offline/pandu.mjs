@@ -56,6 +56,9 @@ const layani = (akar) =>
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.resolve(DIR, '..');
 
+// Jalur Windows ikut dicari karena di situlah APK-nya dibangun: mesin build
+// NaruReader satu-satunya adalah PC Windows pemiliknya, dan uji ini justru
+// paling dibutuhkan di sana — tepat sebelum APK baru dikompilasi.
 const KANDIDAT = [
   process.env.CHROMIUM_BIN,
   '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
@@ -63,6 +66,11 @@ const KANDIDAT = [
   '/usr/bin/chromium',
   '/usr/bin/chromium-browser',
   '/usr/bin/google-chrome',
+  `${process.env.ProgramFiles ?? ''}\\Google\\Chrome\\Application\\chrome.exe`,
+  `${process.env['ProgramFiles(x86)'] ?? ''}\\Google\\Chrome\\Application\\chrome.exe`,
+  `${process.env.LOCALAPPDATA ?? ''}\\Google\\Chrome\\Application\\chrome.exe`,
+  `${process.env['ProgramFiles(x86)'] ?? ''}\\Microsoft\\Edge\\Application\\msedge.exe`,
+  `${process.env.ProgramFiles ?? ''}\\Microsoft\\Edge\\Application\\msedge.exe`,
 ].filter(Boolean);
 
 const cariChromium = () => KANDIDAT.find((jalur) => existsSync(jalur)) ?? null;
@@ -82,9 +90,12 @@ const main = async () => {
   }
 
   process.stdout.write('membangun halaman uji…\n');
+  // shell: true khusus Windows — di sana "npx" adalah npx.cmd, dan spawn tanpa
+  // shell menolaknya dengan ENOENT yang menyesatkan (seolah npx tidak terpasang).
   await jalankanBerkas('npx', ['vite', 'build', '--mode', 'android', '--config', 'uji-offline/vite.config.js'], {
     cwd: WEB,
     maxBuffer: 20 * 1024 * 1024,
+    shell: process.platform === 'win32',
   });
 
   const { server, port } = await layani(path.join(DIR, 'dist'));

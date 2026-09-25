@@ -108,6 +108,33 @@
   }
 
   /*
+   * Zona aman perangkat — jarak dari status bar, bilah navigasi, dan takik.
+   *
+   * Android 15 ke atas memaksa aplikasi bertarget SDK 35+ menggambar
+   * tepi-ke-tepi: jendelanya dibentangkan sampai ke belakang status bar, jadi
+   * tanpa jarak ini jam, ikon sinyal, dan indikator baterai jatuh tepat di atas
+   * TopBar — persis yang dilaporkan dari HP.
+   *
+   * Nilainya ditaruh di --aman-atas/--aman-bawah (:root, theme.css), bukan
+   * langsung di aturan-aturan ini, karena sebagian tempat membutuhkannya di
+   * dalam calc(): sidebar sudah punya py-5 sendiri, dan utilitas Tailwind
+   * selalu menang atas @layer components — dua aturan padding-top yang
+   * bertabrakan di sana berarti yang satu diam-diam tidak berlaku.
+   */
+  .aman-atas {
+    padding-top: var(--aman-atas);
+  }
+
+  /*
+   * Untuk elemen melayang yang diposisikan dari tepi bawah (toast): yang perlu
+   * digeser jaraknya, bukan isinya, jadi margin — padding hanya akan
+   * menebalkan kotaknya sendiri.
+   */
+  .aman-bawah-jarak {
+    margin-bottom: var(--aman-bawah);
+  }
+
+  /*
    * Grid sampul komik.
    *
    * Mulai sm memakai auto-fill, bukan jumlah kolom per breakpoint. Alasannya:

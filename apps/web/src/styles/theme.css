@@ -11,6 +11,35 @@
   --text-secondary: #5a6779;
 
   --reader-bg: #ffffff;
+
+  /*
+   * Zona aman perangkat, satu sumber kebenaran untuk seluruh aplikasi.
+   * Pemakainya: utilitas .aman-atas/.aman-bawah di globals.css, dan beberapa
+   * calc() di komponen tata letak.
+   *
+   * DUA sumber nilai, dan urutannya disengaja:
+   *
+   * 1. `--safe-area-inset-*` disuntikkan plugin SystemBars bawaan Capacitor 8
+   *    (capacitor/plugin/SystemBars.java → injectSafeAreaCSS) ke
+   *    document.documentElement setiap kali inset jendela berubah. Ia dipasang
+   *    pada decorView — jalur milik kerangka kerjanya sendiri — jadi inilah
+   *    nilai yang paling bisa dipercaya ADA di dalam APK. Karena disetel
+   *    sebagai gaya inline pada elemen yang sama, ia menang atas nilai apa pun
+   *    yang ditulis di sini.
+   * 2. `env(safe-area-inset-*)` dipakai kalau variabel itu tidak ada: bundel
+   *    web biasa (tidak ada Capacitor sama sekali) dan iOS/PWA yang
+   *    menyediakannya sendiri. index.html sudah memuat viewport-fit=cover,
+   *    syarat env() bernilai bukan nol.
+   *
+   * Keduanya TIDAK pernah menumpuk. Pada WebView lama (< 140) SystemBars
+   * memberi jarak itu secara native di decorView lalu menyuntikkan 0 ke sini,
+   * jadi aturan CSS-nya menambah nol. Pada WebView baru ia berhenti memberi
+   * jarak native dan menyerahkan seluruhnya ke CSS — keadaan yang berlaku di HP
+   * penguji, dan alasan perbaikan lewat padding WebView di MainActivity dulu
+   * tidak pernah terlihat hasilnya.
+   */
+  --aman-atas: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --aman-bawah: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
 }
 
 .dark {

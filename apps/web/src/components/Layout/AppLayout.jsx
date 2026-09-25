@@ -41,7 +41,9 @@ const Toast = () => {
     <div
       role="status"
       className={[
-        'fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl px-4 py-2.5 text-sm font-medium shadow-scroll animate-slide-up',
+        // aman-bawah-jarak: toast melayang dari tepi bawah layar, dan di HP
+        // tepi itu ditempati bilah navigasi/gestur.
+        'aman-bawah-jarak fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl px-4 py-2.5 text-sm font-medium shadow-scroll animate-slide-up',
         toast.type === 'error' ? 'bg-danger text-white' : 'bg-leaf text-white',
       ].join(' ')}
     >
@@ -72,7 +74,9 @@ export const AppLayout = () => (
       <main className="gutter-app mx-auto w-full max-w-7xl flex-1 py-6 lg:py-8 animate-fade-in">
         <Outlet />
       </main>
-      <footer className="gutter-app border-t border-paper-line py-4 text-center text-xs text-night/40 dark:border-night-line dark:text-paper/40">
+      {/* Elemen terakhir dalam aliran halaman, jadi ia yang menyediakan ruang
+          untuk bilah navigasi/gestur di HP (--aman-bawah, theme.css). */}
+      <footer className="gutter-app border-t border-paper-line pb-[calc(1rem_+_var(--aman-bawah))] pt-4 text-center text-xs text-night/40 dark:border-night-line dark:text-paper/40">
         NaruReader{VERSI ? ` v${VERSI}` : ''} — Phase 1 MVP · dibuat untuk koleksi lokal
       </footer>
     </div>

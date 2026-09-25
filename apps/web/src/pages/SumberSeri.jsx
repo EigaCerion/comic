@@ -8,6 +8,9 @@ import { formatChapterNumber } from '../utils/format.js';
 import { useImportFromUrlMutation } from '../api/apiSlice.js';
 import { showToast } from '../store/slices/uiSlice.js';
 import { useAuth } from '../hooks/useAuth.js';
+import { useTerhubung } from '../platform/terhubung.js';
+import { antrekanChapterSumber } from '../offline/unduh.js';
+import { idChapterSumber, useIndeksOffline } from '../offline/penyimpanan.js';
 
 /**
  * Satu seri di situs sumber, dibaca langsung oleh HP: sampul, sinopsis, genre,
@@ -18,14 +21,20 @@ import { useAuth } from '../hooks/useAuth.js';
  * miring, titik dua, dan tanda tanya, dan menyelipkannya sebagai segmen jalur
  * berarti setiap kali router harus menebak di mana alamat itu berakhir.
  *
- * Chapter yang dipilih di sini diunduh LEWAT SERVER RUMAH, bukan langsung ke
- * penyimpanan HP. Bukan pilihan gaya: gambar halaman perlu diambil dari situs
- * sumber, dikompresi, lalu diberi nomor halaman yang stabil, dan itu semua hidup
- * di sisi server (downloadService). Yang menyalin ke HP adalah tombol "Simpan ke
- * HP" di halaman detail komik, dan ia menuntut chapter yang berkasnya SUDAH ada
- * di server. Jadi urutannya memang dua langkah, dan pesan setelah mengantre
- * menyebut langkah keduanya supaya tidak ada yang menunggu chapter muncul di HP
- * padahal servernya masih mengunduh.
+ * Chapter yang dipilih di sini punya DUA tujuan, dan yang utama adalah HP.
+ *
+ * "Simpan ke HP" mengambil chapternya langsung dari situs sumber ke penyimpanan
+ * aplikasi — tanpa server, tanpa akun, tanpa izin apa pun. Itu jalur yang
+ * dipakai orang yang cuma memasang APK-nya, dan selama berbulan-bulan ia tidak
+ * ada: satu-satunya tombol di sini memanggil /api/imports/url, yang dijaga
+ * kemampuan `kelola_koleksi` di server rumah. Orang tanpa server memilih 40
+ * chapter lalu tidak punya apa pun untuk menekannya.
+ *
+ * "Kirim ke server" adalah jalur lama dan tetap ada, tapi hanya muncul kalau
+ * server rumahnya benar-benar terjangkau DAN orangnya memang boleh mengelola
+ * koleksi. Bedanya disebut di tombolnya masing-masing: yang satu selesai di HP
+ * ini, yang lain menambah koleksi di rumah dan masih harus disimpan ke HP
+ * sesudahnya.
  */
 
 const labelSumber = (host) => {
@@ -122,12 +131,19 @@ export const SumberSeri = () => {
   // bukan sebagai pengamanan — pengamanannya di server — melainkan supaya tamu
   // tidak menghabiskan waktu memilih 40 chapter untuk dijawab 403.
   const { bisa } = useAuth();
-  const kelola = bisa('kelola_koleksi');
+  const { terhubung } = useTerhubung();
+  // Jalur server rumah butuh KEDUANYA: izinnya ada, dan servernya benar-benar
+  // menjawab. Tanpa syarat kedua, orang tanpa server melihat tombol yang pasti
+  // gagal — dan `bisa()` sendiri dijawab useMeQuery, yang saat server mati
+  // mengembalikan daftar kemampuan kosong belakangan, bukan seketika.
+  const kelola = bisa('kelola_koleksi') && terhubung;
+  const indeks = useIndeksOffline();
 
   const [seri, setSeri] = useState(null);
   const [memuat, setMemuat] = useState(false);
   const [galat, setGalat] = useState(null);
   const [terpilih, setTerpilih] = useState(() => new Set());
+  const [menyimpan, setMenyimpan] = useState(false);
   const [importFromUrl, { isLoading: mengantre }] = useImportFromUrlMutation();
 
   const muat = useCallback(async () => {
@@ -173,6 +189,41 @@ export const SumberSeri = () => {
       .sort((a, b) => (b.nomor ?? -Infinity) - (a.nomor ?? -Infinity));
   }, [seri]);
 
+  /*
+   * Host serinya, dari alamat yang sedang dibuka.
+   *
+   * Dipakai sebagai bagian kunci pemetaan id lokal (offline/idSumber.js), jadi
+   * ia HARUS berasal dari sumber yang sama dengan yang dipakai saat mengantre —
+   * kalau tidak, chapter yang sama mendapat dua id dan tersimpan dua kali.
+   * Itulah kenapa `alamat` yang dibaca, bukan seri.url: extractSeries memang
+   * tidak mengembalikan field url sama sekali.
+   */
+  const host = useMemo(() => {
+    try {
+      return new URL(alamat).hostname;
+    } catch {
+      return '';
+    }
+  }, [alamat]);
+
+  /*
+   * Chapter mana yang sudah ada di HP.
+   *
+   * Dihitung dari pemetaan id, bukan dari nomor chapter: dua seri berbeda boleh
+   * sama-sama punya "chapter 5", dan yang menentukan identitas sebuah chapter
+   * tersimpan adalah (host, seri, nomor) — persis kunci yang dipakai saat
+   * mengalokasikan id-nya.
+   */
+  const diHP = useMemo(() => {
+    const peta = new Map();
+    if (!host) return peta;
+    chapters.forEach((chapter) => {
+      const id = idChapterSumber({ host, urlSeri: alamat, nomor: chapter.nomor, urlChapter: chapter.url }, indeks);
+      if (id !== null && indeks.chapter[id]) peta.set(chapter.url, id);
+    });
+    return peta;
+  }, [chapters, indeks, host, alamat]);
+
   // Pilihan dilupakan begitu serinya berganti. Tanpa ini, URL chapter yang
   // dipilih di seri sebelumnya masih duduk di Set saat halaman dipakai ulang oleh
   // router untuk seri lain, dan tombolnya melaporkan jumlah yang tidak ada di
@@ -191,6 +242,57 @@ export const SumberSeri = () => {
 
   // `chapters` sudah urut dari nomor terbesar, jadi "terbaru" cukup potongan awal.
   const pilihTerbaru = (jumlah) => setTerpilih(new Set(chapters.slice(0, jumlah).map((chapter) => chapter.url)));
+
+  /**
+   * Simpan chapter terpilih LANGSUNG ke HP.
+   *
+   * Yang sudah ada di HP disaring lebih dulu, bukan diserahkan ke antrean.
+   * Antrean memang melewati berkas yang sudah benar, tapi ia tetap mengambil
+   * ulang halaman chapternya dari situs sumber untuk mengetahuinya — satu
+   * permintaan ke situs orang lain untuk pekerjaan yang sudah selesai, dikalikan
+   * jumlah chapter yang tercentang.
+   */
+  const simpanKeHP = async () => {
+    const pilihan = chapters.filter((chapter) => terpilih.has(chapter.url));
+    if (pilihan.length === 0) return;
+
+    const baru = pilihan.filter((chapter) => !diHP.has(chapter.url));
+    const dilewati = pilihan.length - baru.length;
+
+    if (baru.length === 0) {
+      setTerpilih(new Set());
+      dispatch(showToast({ message: `${dilewati} chapter itu sudah ada di HP.` }));
+      return;
+    }
+
+    setMenyimpan(true);
+    try {
+      const daftar = await antrekanChapterSumber({
+        host,
+        urlSeri: alamat,
+        // Judul komik ikut disimpan ke katalog HP dan dipakai rak serta reader.
+        // Serinya sudah pasti terbaca sampai di sini — daftar chapternya berasal
+        // dari halaman yang sama — jadi cadangan ini cuma penjaga terakhir.
+        judulKomik: seri?.title || labelSumber(host),
+        urlSampul: seri?.coverUrl ?? null,
+        chapters: baru.map((chapter) => ({ nomor: chapter.nomor, judul: chapter.judul, url: chapter.url })),
+      });
+
+      setTerpilih(new Set());
+      dispatch(
+        showToast({
+          message:
+            `${daftar.length} chapter mulai diunduh ke HP` +
+            (dilewati ? ` · ${dilewati} sudah ada` : '') +
+            '. Kemajuannya terlihat di Tersimpan di HP.',
+        }),
+      );
+    } catch (error) {
+      dispatch(showToast({ type: 'error', message: error?.message ?? 'Gagal menyiapkan unduhan' }));
+    } finally {
+      setMenyimpan(false);
+    }
+  };
 
   const unduhTerpilih = async () => {
     const pilihan = chapters.filter((chapter) => terpilih.has(chapter.url));
@@ -329,7 +431,7 @@ export const SumberSeri = () => {
               elemen yang menimpa isi halaman di layar 375px. Panel ini ikut
               mengalir, tepat di atas daftar yang dipilihnya.
             */}
-            {kelola && chapters.length > 0 && (
+            {chapters.length > 0 && (
               <div className="card mb-2 flex flex-wrap items-center gap-2 p-3">
                 <span className="label-mikro flex-none">Pilih</span>
                 {CEPAT.filter((jumlah) => jumlah < chapters.length).map((jumlah) => (
@@ -359,16 +461,32 @@ export const SumberSeri = () => {
                   </button>
                 )}
 
-                {/* ml-auto: tombol unduh menempel ke tepi kanan pada layar lebar,
+                {/* ml-auto: tombol aksi menempel ke tepi kanan pada layar lebar,
                     dan turun jadi baris sendiri di 375px karena flex-wrap. */}
-                <button
-                  type="button"
-                  className="btn-accent ml-auto px-3 py-1.5 text-xs"
-                  onClick={unduhTerpilih}
-                  disabled={terpilih.size === 0 || mengantre}
-                >
-                  {mengantre ? 'Mengantre…' : `⬇ Unduh ${terpilih.size} chapter`}
-                </button>
+                <div className="ml-auto flex flex-none flex-wrap items-center gap-2">
+                  {/* Jalur server rumah DI KIRI dan sebagai tombol sekunder,
+                      meski ia yang lebih dulu ada: yang seharusnya paling mudah
+                      ditekan adalah yang selesai di HP ini juga. */}
+                  {kelola && (
+                    <button
+                      type="button"
+                      className="btn-ghost px-3 py-1.5 text-xs"
+                      onClick={unduhTerpilih}
+                      disabled={terpilih.size === 0 || mengantre || menyimpan}
+                      title="Tambahkan ke koleksi server rumah. Setelah selesai di sana, masih harus disimpan ke HP."
+                    >
+                      {mengantre ? 'Mengantre…' : '🏠 Kirim ke server'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="btn-accent px-3 py-1.5 text-xs"
+                    onClick={simpanKeHP}
+                    disabled={terpilih.size === 0 || menyimpan || mengantre}
+                  >
+                    {menyimpan ? 'Menyiapkan…' : `⬇ Simpan ${terpilih.size} ke HP`}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -384,9 +502,18 @@ export const SumberSeri = () => {
                   <BarisChapter
                     key={chapter.kunci}
                     chapter={chapter}
-                    bisaDipilih={kelola}
+                    /* Tidak lagi bersyarat izin: menyimpan ke HP sendiri tidak
+                       butuh persetujuan siapa pun. */
+                    bisaDipilih
                     dipilih={terpilih.has(chapter.url)}
                     saatToggle={() => toggle(chapter.url)}
+                    aksi={
+                      diHP.has(chapter.url) ? (
+                        <span className="text-[11px] font-semibold text-leaf" title="Sudah tersimpan di HP">
+                          ✓ Di HP
+                        </span>
+                      ) : null
+                    }
                   />
                 ))}
               </ul>

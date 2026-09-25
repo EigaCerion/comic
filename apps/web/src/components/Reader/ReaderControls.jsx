@@ -3,8 +3,13 @@ import { Link } from 'react-router-dom';
 import { formatChapterNumber } from '../../utils/format.js';
 import ReaderSettings from './ReaderSettings.jsx';
 
+// pt-[...--aman-atas]: zona aman perangkat tetap dihitung meski reader
+// menyembunyikan status bar (ModeBacaNatif). Penyembunyiannya baru berlaku
+// setelah plugin StatusBar selesai dimuat, dan di perangkat yang menolaknya ia
+// tidak pernah berlaku sama sekali. Begitu bilahnya benar-benar hilang,
+// --aman-atas bernilai 0 dengan sendirinya.
 export const ReaderHeader = ({ chapter, comic, onBukaDaftar }) => (
-  <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-night-line bg-night px-4 py-2 text-paper lg:bg-night/90 lg:backdrop-blur">
+  <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-night-line bg-night px-4 pb-2 pt-[calc(0.5rem_+_var(--aman-atas))] text-paper lg:bg-night/90 lg:backdrop-blur">
     <Link to={`/comic/${comic.slug}`} className="btn-ghost border-night-line px-2 py-1 text-paper" title="Kembali">
       ←
     </Link>
@@ -46,7 +51,10 @@ export const ReaderFooter = ({
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
-    <footer className="sticky bottom-0 z-20 border-t border-night-line bg-night px-4 py-2 text-paper lg:bg-night/90 lg:backdrop-blur">
+    // pb-[...--aman-bawah]: bilah navigasi/gestur TIDAK ikut disembunyikan
+    // reader — StatusBar.hide() hanya menyentuh status bar — jadi tanpa ini
+    // tombol Prev/Next duduk tepat di bawah garis gestur.
+    <footer className="sticky bottom-0 z-20 border-t border-night-line bg-night px-4 pb-[calc(0.5rem_+_var(--aman-bawah))] pt-2 text-paper lg:bg-night/90 lg:backdrop-blur">
       <div className="mx-auto flex max-w-4xl items-center gap-2">
         <button type="button" className="btn-ghost border-night-line px-3 text-paper" onClick={onPrev}>
           ◄ <span className="hidden sm:inline">Prev</span>

@@ -146,7 +146,23 @@ export const Offline = () => {
               <div className="flex items-center gap-3">
                 <SampulLokal sampul={komik.sampul} judul={komik.judul} />
                 <div className="min-w-0 flex-1">
-                  <Link to={`/comic/${komik.slug}`} className="block truncate text-sm font-bold">
+                  {/*
+                    Komik sumber mengantar ke halaman SERINYA di situs asal, bukan
+                    ke /comic/:slug. Halaman itu hidup dari koleksi server rumah,
+                    dan komik yang diunduh langsung ke HP memang tidak pernah ada
+                    di sana — tautannya akan mendarat di "tidak ditemukan", atau
+                    (karena slugnya dibentuk "sumber/<id>") memutar kembali ke
+                    rak ini. Halaman serinya jauh lebih berguna: di situlah
+                    chapter berikutnya bisa dipilih dan disimpan.
+                  */}
+                  <Link
+                    to={
+                      komik.sumber?.urlSeri
+                        ? `/sumber/seri?url=${encodeURIComponent(komik.sumber.urlSeri)}`
+                        : `/comic/${komik.slug}`
+                    }
+                    className="block truncate text-sm font-bold"
+                  >
                     {komik.judul}
                   </Link>
                   <p className="text-xs opacity-60">
