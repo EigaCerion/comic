@@ -1,18 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { EmptyState } from '../components/Common/index.jsx';
 import { useTerhubung } from '../platform/terhubung.js';
 import { showToast } from '../store/slices/uiSlice.js';
 import {
-  bebaskanUrl,
   hapusChapterTersimpan,
   hapusKomikTersimpan,
   komikTersimpan,
   totalBytesTersimpan,
-  urlLokal,
   useIndeksOffline,
 } from '../offline/penyimpanan.js';
+import SampulLokal from '../offline/SampulLokal.jsx';
 import { batalkanUnduhan, kosongkanAntrean } from '../offline/unduh.js';
 import { formatBytes, formatChapterNumber, formatRelativeTime } from '../utils/format.js';
 
@@ -24,46 +23,6 @@ import { formatBytes, formatChapterNumber, formatRelativeTime } from '../utils/f
  * ukuran, dan bahkan gambar sampulnya dibaca dari penyimpanan sendiri. Itu pula
  * alasan sampul ikut diunduh saat chapter disimpan.
  */
-
-const SampulLokal = ({ komik }) => {
-  const [url, setUrl] = useState(null);
-
-  useEffect(() => {
-    let dibuang = false;
-    let dipegang = null;
-
-    if (!komik.sampul) return undefined;
-    const [chapterId, nama] = komik.sampul.split('/');
-    urlLokal(chapterId, nama).then((hasil) => {
-      if (dibuang) {
-        bebaskanUrl(hasil);
-        return;
-      }
-      dipegang = hasil;
-      setUrl(hasil);
-    });
-
-    return () => {
-      dibuang = true;
-      bebaskanUrl(dipegang);
-    };
-  }, [komik.sampul]);
-
-  if (!url) {
-    return (
-      <div className="flex aspect-[2/3] w-14 flex-none items-center justify-center rounded-lg bg-leaf/10 text-xl">
-        🍥
-      </div>
-    );
-  }
-  return (
-    <img
-      src={url}
-      alt={`Cover ${komik.judul}`}
-      className="aspect-[2/3] w-14 flex-none rounded-lg object-cover"
-    />
-  );
-};
 
 const KartuUnduhan = () => {
   const unduhan = useSelector((state) => state.unduhan);
@@ -185,7 +144,7 @@ export const Offline = () => {
           {daftar.map((komik) => (
             <section key={komik.id} className="card p-4">
               <div className="flex items-center gap-3">
-                <SampulLokal komik={komik} />
+                <SampulLokal sampul={komik.sampul} judul={komik.judul} />
                 <div className="min-w-0 flex-1">
                   <Link to={`/comic/${komik.slug}`} className="block truncate text-sm font-bold">
                     {komik.judul}

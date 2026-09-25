@@ -19,7 +19,7 @@ import { RatingKomentar } from '../components/Interaksi/RatingKomentar.jsx';
 import { useAuth } from '../hooks/useAuth.js';
 import { IS_APP } from '../platform/index.js';
 import { urlMedia } from '../platform/server.js';
-import { TombolSimpanChapter, TombolSimpanMassal } from '../offline/SimpanKeHP.jsx';
+import { PanelSimpanKeHP, TombolSimpanChapter, TombolSimpanMassal } from '../offline/SimpanKeHP.jsx';
 import { showToast } from '../store/slices/uiSlice.js';
 import { formatBytes, formatChapterNumber, formatRelativeTime, statusColor } from '../utils/format.js';
 
@@ -323,6 +323,7 @@ export const ComicDetail = () => {
   const [order, setOrder] = useState('asc');
   const [showDownloadForm, setShowDownloadForm] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [showSimpan, setShowSimpan] = useState(false);
   // Satu formulir Ganti terbuka sekaligus: daftar chapter bisa ratusan baris,
   // dan dua formulir terbuka berjauhan mudah membuat URL masuk ke chapter yang
   // salah.
@@ -523,10 +524,15 @@ export const ComicDetail = () => {
             <button type="button" className="btn-ghost" onClick={() => toggleFavorite(comic.id)}>
               {comic.isFavorite ? '★ Favorit' : '☆ Favoritkan'}
             </button>
-            {/* Build android saja: bekal baca tanpa server, dimulai dari titik
-                lanjut baca — bukan dari chapter pertama. */}
+            {/* Build android saja: bekal baca tanpa server. Panelnya dirender di
+                bawah baris ini, bukan di dalamnya — lihat TombolSimpanMassal. */}
             {IS_APP && (
-              <TombolSimpanMassal comic={comic} chapters={chapters} mulaiDari={lanjutKe} />
+              <TombolSimpanMassal
+                comic={comic}
+                chapters={chapters}
+                terbuka={showSimpan}
+                saatKetuk={() => setShowSimpan((v) => !v)}
+              />
             )}
             {bisa('unggah_chapter') && (
               <Link to={`/upload?comic=${comic.id}`} className="btn-ghost">
@@ -561,6 +567,15 @@ export const ComicDetail = () => {
           </div>
         </div>
       </div>
+
+      {IS_APP && showSimpan && (
+        <PanelSimpanKeHP
+          comic={comic}
+          chapters={chapters}
+          mulaiDari={lanjutKe}
+          onClose={() => setShowSimpan(false)}
+        />
+      )}
 
       {showEdit && <EditMetadataForm comic={comic} onClose={() => setShowEdit(false)} />}
 

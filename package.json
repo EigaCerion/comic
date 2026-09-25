@@ -1,6 +1,6 @@
 {
   "name": "naruread",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "NaruReader - aplikasi pembaca komik lokal (Phase 1 MVP)",
   "workspaces": [
@@ -31,7 +31,9 @@
     "precheck": "node apps/api/scripts/preflight.js",
     "bench:compress": "npm run bench:compress --workspace apps/api",
     "covers:backfill": "npm run covers:backfill --workspace apps/api",
-    "test:audit": "npm run test:audit --workspace apps/api"
+    "test:audit": "npm run test:audit --workspace apps/api",
+    "test:rentang": "npm run test:rentang --workspace apps/api",
+    "test:offline": "npm run test:offline --workspace apps/web"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

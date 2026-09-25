@@ -589,7 +589,7 @@ Lihat [.env.example](.env.example). Yang paling sering diubah:
 | `IMAGE_MAX_WIDTH/HEIGHT` | 1600 / 16383 | lebar HD; tinggi hanya pengaman encoder WebP — jangan diturunkan, strip webtoon ikut tergencet |
 | `COMPRESSION_CONCURRENCY`| 4       | turunkan ke 2 di laptop 8GB RAM                      |
 | `DOWNLOAD_CONCURRENCY`   | 2       | job download paralel                                 |
-| `ALLOWED_SOURCE_DOMAINS` | 6 domain | allowlist sumber download                           |
+| `ALLOWED_SOURCE_DOMAINS` | 7 domain | allowlist sumber download — wajib memuat tiap host berblok katalog |
 | `WORKER_ENABLED`         | true    | `false` kalau worker dijalankan sebagai proses sendiri |
 
 ---

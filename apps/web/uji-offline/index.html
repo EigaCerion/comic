@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Uji lapisan offline</title>
+    <script>
+      /*
+       * Disuntikkan SEBELUM modul aplikasi dimuat, meniru native-bridge.js milik
+       * Capacitor. Urutannya menentukan: ASLI_NATIF di platform/index.js adalah
+       * konstanta modul yang dievaluasi sekali saat impor, jadi window.Capacitor
+       * harus sudah ada sebelum baris itu dijalankan — persis seperti di WebView
+       * sungguhan.
+       */
+      window.WEBVIEW_SERVER_URL = 'http://localhost';
+      window.Capacitor = {
+        isNativePlatform: () => true,
+        // Tiruan convertFileSrc: jembatan sungguhan menukar file:// dengan
+        // origin internal WebView, dan itu bentuk yang diperiksa pengujian.
+        convertFileSrc: (jalur) =>
+          String(jalur).replace(/^file:\/\//, `${window.WEBVIEW_SERVER_URL}/_capacitor_file_`),
+      };
+    </script>
+  </head>
+  <body>
+    <pre id="keluaran">menjalankan…</pre>
+    <script type="module" src="./jalankan.js"></script>
+  </body>
+</html>

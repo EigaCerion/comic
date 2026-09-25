@@ -103,8 +103,23 @@ export const config = {
   // diizinkan — penjagaan localhost/IP privat tetap berlaku.
   allowReferencedImageHosts: bool(process.env.ALLOW_REFERENCED_IMAGE_HOSTS, true),
 
+  /*
+   * Daftar bawaan HARUS memuat setiap host yang punya blok katalog di
+   * packages/sumber/selectors.js, dan harus sama dengan yang tertulis di
+   * .env.example.
+   *
+   * Bukan soal kerapian. Scout menyaring host yang akan dipindai lewat
+   * sanitizeSourceUrl (scoutService.hostTerpindai), dan penyaringan itu diam:
+   * host yang punya blok katalog lengkap tapi tidak ada di daftar ini hilang
+   * dari etalase tanpa satu baris log pun, tanpa pesan galat, dan tanpa kartu
+   * yang bisa diklik untuk mencari tahu. Daftar ini sempat ketinggalan dua
+   * host — komikindo.ch dan kiryuu.to sudah punya blok katalog dan sudah ada di
+   * .env.example, tapi tidak di sini — sehingga siapa pun yang menjalankan
+   * server tanpa berkas .env hanya melihat dua dari empat sumber dan tidak
+   * punya cara menebak kenapa.
+   */
   allowedSourceDomains: (process.env.ALLOWED_SOURCE_DOMAINS ??
-    'komiku.org,komikpedia.net,webtoons.com,siikomik.net,ngomik.cc')
+    'komiku.org,komikpedia.net,webtoons.com,siikomik.net,ngomik.cc,komikindo.ch,kiryuu.to')
     .split(',')
     .map((d) => d.trim().toLowerCase())
     .filter(Boolean),

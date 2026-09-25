@@ -7,6 +7,8 @@ import {
 import { ComicCard } from '../components/ComicList/ComicCard.jsx';
 import { EmptyState, ErrorState, Spinner } from '../components/Common/index.jsx';
 import { formatBytes } from '../utils/format.js';
+import { IS_APP } from '../platform/index.js';
+import RakBeranda from '../offline/RakBeranda.jsx';
 
 const Hero = ({ stats }) => (
   <section className="relative overflow-hidden rounded-2xl border border-paper-line bg-gradient-to-br from-leaf via-leaf-dark to-night px-6 py-10 text-paper dark:border-night-line">
@@ -69,12 +71,29 @@ export const Home = () => {
   const latestQuery = useGetComicsQuery({ limit: 12, sort: 'latest' });
   const favoritesQuery = useGetComicsQuery({ limit: 6, favorite: true });
 
+  /*
+   * `!isError` ikut disyaratkan, dan itu memperbaiki keluhan yang paling
+   * menyesatkan di aplikasi ini: server rumah tidak terjangkau berarti data-nya
+   * undefined, `total ?? 0` jadi 0, dan beranda mengumumkan "Perpustakaan masih
+   * kosong" kepada orang yang koleksinya utuh — bahkan kepada orang yang chapter
+   * tersimpannya ada di HP-nya sendiri.
+   *
+   * Efek sampingnya justru yang diinginkan: dengan gerbang ini terbuka, baris
+   * "Baru diperbarui" di bawah kini sempat merender ErrorState-nya sendiri
+   * berikut tombol coba lagi. Sebelumnya EmptyState selalu menang lebih dulu,
+   * sehingga ErrorState itu tidak pernah terlihat sekali pun.
+   */
   const isEmptyLibrary =
-    !latestQuery.isLoading && (latestQuery.data?.pagination?.total ?? 0) === 0;
+    !latestQuery.isLoading && !latestQuery.isError && (latestQuery.data?.pagination?.total ?? 0) === 0;
 
   return (
     <div>
       <Hero stats={stats} />
+
+      {/* Build android saja: komik yang benar-benar ada di HP ini. Ditaruh paling
+          atas karena ia satu-satunya bagian beranda yang tetap berarti saat
+          server rumah mati. */}
+      {IS_APP && <RakBeranda />}
 
       {isEmptyLibrary && (
         <div className="mt-8">
