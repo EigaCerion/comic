@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toggleSidebar, toggleTheme } from '../../store/slices/uiSlice.js';
 import { useSearchQuery } from '../../api/apiSlice.js';
+import { urlMedia } from '../../platform/server.js';
 import { DebouncedInput } from '../Common/index.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 
@@ -74,7 +75,12 @@ export const TopBar = () => {
                   onClick={() => setFocused(false)}
                 >
                   {comic.coverUrl ? (
-                    <img src={comic.coverUrl} alt="" className="h-12 w-9 rounded object-cover" loading="lazy" />
+                    <img
+                      src={urlMedia(comic.coverUrl)}
+                      alt=""
+                      className="h-12 w-9 rounded object-cover"
+                      loading="lazy"
+                    />
                   ) : (
                     <span className="flex h-12 w-9 items-center justify-center rounded bg-paper-line dark:bg-night-line">
                       📖

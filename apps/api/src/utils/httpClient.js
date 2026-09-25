@@ -62,11 +62,28 @@ const parseRobots = (text) => {
   return groups;
 };
 
+/**
+ * Hanya '*' yang punya arti khusus di sini; sisanya literal — termasuk '?'.
+ *
+ * Tanpa '?' ikut di-escape, `Disallow: /?s=` (baris baku Yoast/RankMath di
+ * WordPress) dibaca regex sebagai "garis miring OPSIONAL lalu s=" dan tidak
+ * pernah cocok dengan jalur pencarian /?s=naruto — jadi halaman yang justru
+ * dilarang tetap diambil. Ke arah sebaliknya `Disallow: /?` jadi '^/?' yang
+ * cocok dengan SEMUA jalur. Aturan yang sama dipakai aplikasi di
+ * apps/web/src/sumber/ambil.js, dan keduanya harus memutuskan hal yang sama.
+ */
 const matchesPath = (rulePath, targetPath) => {
   if (rulePath === '') return false;
-  const pattern = rulePath.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+  const pattern = rulePath.replace(/[.+^${}()|[\]\\?]/g, '\\$&').replace(/\*/g, '.*');
   const anchored = pattern.endsWith('$') ? `^${pattern}` : `^${pattern}`;
-  return new RegExp(anchored).test(targetPath);
+  try {
+    return new RegExp(anchored).test(targetPath);
+  } catch {
+    // Satu baris robots.txt yang cacat tidak boleh menjatuhkan seluruh host:
+    // lemparannya keluar lewat isAllowedByRobots ke pemanggil sebagai galat
+    // yang tidak menyebut robots sama sekali.
+    return false;
+  }
 };
 
 const isAllowedByRobots = async (url) => {

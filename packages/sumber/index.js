@@ -1,11 +1,23 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import * as cheerio from 'cheerio';
-import { createLogger } from '../../utils/logger.js';
+import selectors from './selectors.js';
 
-const log = createLogger('naruread:sources');
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+/*
+ * Logger yang bisa disuntik.
+ *
+ * Paket ini wajib bisa dibundel untuk browser, jadi ia tidak boleh menyentuh
+ * satu pun modul bawaan Node — sementara logger server menulis ke berkas lewat
+ * node:fs. Karena itu extractor tidak lagi membuat logger sendiri: bawaannya
+ * diam total, dan apps/api memasang logger miliknya lewat pasangLogger()
+ * supaya baris debug yang sudah ada ("gambar di luar folder chapter dibuang")
+ * tetap sampai ke debug.log persis seperti sebelum pemindahan ini.
+ */
+const diam = () => {};
+const LOGGER_DIAM = { info: diam, debug: diam, warn: diam, error: diam };
+let log = LOGGER_DIAM;
+
+export const pasangLogger = (logger) => {
+  log = { ...LOGGER_DIAM, ...logger };
+};
 
 /**
  * Preset selector untuk tema pembaca komik yang umum dipakai. Satu extractor
@@ -35,13 +47,52 @@ const FALLBACK = {
   reader: [],
 };
 
-const loadConfig = () => {
-  try {
-    return JSON.parse(fs.readFileSync(path.join(__dirname, 'selectors.json'), 'utf8'));
-  } catch (error) {
-    log.warn(`selectors.json tidak terbaca: ${error.message}`);
-    return { hosts: {} };
+// Dulu ini membaca selectors.json dari disk pada SETIAP pemanggilan. Tabelnya
+// kini modul JS, jadi yang tersisa hanya mengembalikan rujukan — dan sejak
+// aplikasi Android boleh menukar tabelnya dengan milik server rumah, rujukan
+// itu tidak lagi selalu menunjuk `selectors`. Semua pemanggil di bawah tetap
+// lewat sini, jadi penukarannya cukup mengubah satu variabel dan tidak ada satu
+// extractor pun yang perlu tahu tabelnya datang dari mana.
+let tabelAktif = selectors;
+const loadConfig = () => tabelAktif;
+
+/** Versi tabel yang sedang dipakai extractor. */
+export const versiTabelPola = () => Number(loadConfig().versi) || 0;
+
+/**
+ * Tukar tabel selector yang dipakai SELURUH extractor di berkas ini.
+ *
+ * Ini satu-satunya cara yang sah untuk menggantinya. Alternatif yang menggoda —
+ * Object.assign(selectors.hosts, tabelBaru) — mencemari tabel bawaan APK secara
+ * permanen untuk seumur proses, tanpa jejak dan tanpa jalan pulang: begitu
+ * tabel dari server ternyata yang salah, tidak ada lagi tabel bawaan untuk
+ * dikembalikan. Di sini `selectors` tidak pernah disentuh, jadi pasang(null)
+ * benar-benar memulihkan keadaan semula.
+ *
+ * Bentuk yang tidak masuk akal DILEMPAR, bukan ditolak diam-diam: pemanggilnya
+ * adalah pembaruan tabel lewat jaringan, dan tabel gagal yang tidak terdengar
+ * berubah jadi keluhan "kok selectornya tidak ikut diperbaiki" berbulan-bulan
+ * kemudian.
+ *
+ * @param {object|null} tabel Tabel pengganti; null mengembalikan tabel bawaan.
+ * @returns {number} versi tabel yang akhirnya terpasang
+ */
+export const pasangTabelPola = (tabel) => {
+  if (tabel === null || tabel === undefined) {
+    tabelAktif = selectors;
+    return versiTabelPola();
   }
+  if (typeof tabel !== 'object' || Array.isArray(tabel)) {
+    throw new Error('Tabel pola harus berupa objek');
+  }
+  if (!tabel.hosts || typeof tabel.hosts !== 'object' || Array.isArray(tabel.hosts)) {
+    throw new Error('Tabel pola tidak punya blok "hosts"');
+  }
+  if (!Number.isFinite(Number(tabel.versi))) {
+    throw new Error('Tabel pola tidak punya "versi" berupa angka');
+  }
+  tabelAktif = tabel;
+  return versiTabelPola();
 };
 
 const baseHost = (hostname) => hostname.toLowerCase().replace(/^www\./, '').split('.').slice(-2).join('.');
@@ -54,7 +105,7 @@ export const resolveSourceConfig = (url) => {
 
   if (entry?.disabled) {
     const error = new Error(
-      entry.note || `Import otomatis dari ${hostname} dimatikan di selectors.json`,
+      entry.note || `Import otomatis dari ${hostname} dimatikan di packages/sumber/selectors.js`,
     );
     error.status = 400;
     throw error;
@@ -81,16 +132,19 @@ export const resolveSourceConfig = (url) => {
 };
 
 /**
- * Host yang punya blok katalog. Dibaca dari selectors.json setiap kali
- * dipanggil, sama seperti resolveSourceConfig, jadi sumber etalase baru cukup
- * ditambah dengan menyunting berkas itu.
+ * Host yang punya blok katalog. Tabelnya dibekukan saat modul ini dievaluasi:
+ * dulu selectors.json dibaca ulang dari disk pada SETIAP pemanggilan, tapi
+ * paket ini harus bisa dibundel untuk Android sehingga node:fs tidak boleh
+ * dipakai lagi. Sumber etalase baru tetap cukup ditambah dengan menyunting
+ * packages/sumber/selectors.js — hanya saja server dan worker baru melihatnya
+ * setelah dinyalakan ulang, karena `npm start` tidak memakai --watch.
  */
 export const daftarHostKatalog = () =>
   Object.entries(loadConfig().hosts ?? {})
     .filter(([, entri]) => entri?.katalog && !entri.disabled)
     .map(([host]) => host.toLowerCase());
 
-/** Host yang punya blok cari, dibaca ulang dari selectors.json seperti daftarHostKatalog. */
+/** Host yang punya blok cari, dari tabel yang sama-sama dibekukan seperti daftarHostKatalog. */
 export const daftarHostCari = () =>
   Object.entries(loadConfig().hosts ?? {})
     .filter(([, entri]) => entri?.cari?.url && !entri.disabled)
@@ -1215,7 +1269,7 @@ const panenKartu = ($, kat, pageUrl) => {
  * chapter terbarunya, bukan isi satu seri.
  *
  * Berbeda dari extractSeries yang boleh jatuh ke heuristik, di sini host yang
- * tidak punya blok "katalog" di selectors.json dibiarkan kosong. Memindai
+ * tidak punya blok "katalog" di packages/sumber/selectors.js dibiarkan kosong. Memindai
  * semua <article> terdengar menolong, tapi halaman uji komiku punya 177
  * <article> sementara yang benar-benar kartu etalase hanya 67 — sisanya iklan,
  * berita, dan widget genre yang akan ikut terpanen sebagai "komik".
@@ -1236,10 +1290,14 @@ export const extractKatalog = (html, pageUrl) => {
       source: host,
       extractor: null,
       items: [],
+      // "Muat ulang tabel sumbernya", bukan "nyalakan ulang server": paket ini
+      // sekarang ikut dibundel ke dalam aplikasi Android, yang dipakai justru
+      // oleh orang yang TIDAK punya server. Menyuruh mereka menyalakan ulang
+      // sesuatu yang tidak ada hanya membuat pesan galat ini terasa rusak.
       warning:
         `Belum ada konfigurasi katalog untuk ${host}. Tambahkan hosts["${host}"].katalog ` +
-        'di selectors.json berisi: nama, bagian [{ nama, wadah }], kartu, judul, ' +
-        'tautanSeri, sampul, keterangan, dan tautanChapter.',
+        'di packages/sumber/selectors.js berisi: nama, bagian [{ nama, wadah }], kartu, ' +
+        'judul, tautanSeri, sampul, keterangan, dan tautanChapter, lalu muat ulang tabel sumbernya.',
     };
   }
 
@@ -1251,7 +1309,8 @@ export const extractKatalog = (html, pageUrl) => {
     warning =
       `Tidak ada kartu terbaca di ${host}: selector "${kat.kartu}" tidak menghasilkan item ` +
       `dengan tautan seri "${kat.tautanSeri ?? kat.judul ?? '(belum diisi)'}". ` +
-      'Kemungkinan situs mengganti tema — perbaiki blok katalog di selectors.json.';
+      'Kemungkinan situs mengganti tema — perbaiki blok katalog di packages/sumber/selectors.js, ' +
+      'lalu muat ulang tabel sumbernya.';
   } else if (bagianKosong.length > 0) {
     warning = `Bagian tanpa kartu: ${bagianKosong.join(', ')}. Selector wadahnya mungkin sudah berubah.`;
   }
@@ -1266,7 +1325,7 @@ export const extractKatalog = (html, pageUrl) => {
 
 /**
  * Baca halaman HASIL CARI sebuah situs sumber memakai blok "cari" di
- * selectors.json. Kartunya dibaca dengan jalur yang sama dengan etalase.
+ * packages/sumber/selectors.js. Kartunya dibaca dengan jalur yang sama dengan etalase.
  *
  * Nol kartu di sini lumrah — kata kuncinya memang tidak ada — jadi tidak
  * dijadikan peringatan begitu saja. Peringatan hanya muncul kalau ada bukti
@@ -1291,8 +1350,9 @@ export const extractPencarian = (html, pageUrl) => {
       extractor: null,
       items: [],
       warning:
-        `Belum ada konfigurasi cari untuk ${host}. Tambahkan hosts["${host}"].cari di selectors.json ` +
-        'berisi: url (dengan penanda {q}), kartu, judul, tautanSeri, dan sampul.',
+        `Belum ada konfigurasi cari untuk ${host}. Tambahkan hosts["${host}"].cari di ` +
+        'packages/sumber/selectors.js berisi: url (dengan penanda {q}), kartu, judul, ' +
+        'tautanSeri, dan sampul, lalu muat ulang tabel sumbernya.',
     };
   }
 
@@ -1307,18 +1367,21 @@ export const extractPencarian = (html, pageUrl) => {
   if (wadahHilang.length > 0) {
     warning =
       `Wadah hasil cari tidak ditemukan di ${host}: ${wadahHilang.map((satu) => satu.label).join(', ')}. ` +
-      'Kemungkinan situs mengganti tema — perbaiki blok cari di selectors.json.';
+      'Kemungkinan situs mengganti tema — perbaiki blok cari di packages/sumber/selectors.js, ' +
+      'lalu muat ulang tabel sumbernya.';
   } else if (items.length === 0 && cocok > 0) {
     // Kartunya ada, tapi tidak satu pun punya tautan seri atau judul yang
     // terbaca — pola tautan situsnya berubah (mis. /manga/ jadi /series/).
     // Tanpa ini hasilnya "0 judul" yang terbaca seperti judulnya memang tidak ada.
     warning =
       `${cocok} kartu hasil cari di ${host} cocok dengan selector "${cari.kartu}" tapi tidak satu pun terbaca. ` +
-      'Kemungkinan pola tautan situs berubah — perbaiki blok cari di selectors.json.';
+      'Kemungkinan pola tautan situs berubah — perbaiki blok cari di packages/sumber/selectors.js, ' +
+      'lalu muat ulang tabel sumbernya.';
   } else if (items.length === 0 && cari.tandaKosong && $(cari.tandaKosong).length === 0) {
     warning =
       `Tidak ada kartu maupun penanda "tidak ada hasil" (${cari.tandaKosong}) di ${host}. ` +
-      'Kemungkinan situs mengganti tema — perbaiki blok cari di selectors.json.';
+      'Kemungkinan situs mengganti tema — perbaiki blok cari di packages/sumber/selectors.js, ' +
+      'lalu muat ulang tabel sumbernya.';
   }
 
   return {
@@ -1329,13 +1392,10 @@ export const extractPencarian = (html, pageUrl) => {
   };
 };
 
-export default {
-  resolveSourceConfig,
-  daftarHostKatalog,
-  daftarHostCari,
-  extractSeries,
-  extractChapterPages,
-  extractKatalog,
-  extractPencarian,
-  PRESETS,
-};
+// Sengaja tidak ada `export default`. Dulu ada, dan isinya tidak pernah sama dengan
+// ekspor bernama di atas: `extractSeriesLink` terlewat sejak lama, `pasangLogger`
+// terlewat saat pemindahan ke paket ini. Bahayanya diam — `sumber.pasangLogger?.(…)`
+// lolos tanpa keluhan, extractor tetap memakai LOGGER_DIAM, dan satu-satunya jejak
+// kenapa sebuah chapter turun jadi nol gambar ikut hilang, di HP pemakai, bukan di
+// mesin yang bisa kita periksa. Dengan hanya satu permukaan, salah nama jadi error
+// saat bundling. Tambahkan ekspor bernama baru, jangan hidupkan lagi yang ini.

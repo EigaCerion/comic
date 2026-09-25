@@ -9,7 +9,8 @@ import {
   extractKatalog,
   extractPencarian,
   resolveSourceConfig,
-} from './sources/index.js';
+} from '@naruread/sumber';
+import '../utils/sumberLogger.js';
 import { importSeries, previewSeries } from './urlImportService.js';
 
 const log = createLogger('naruread:scout');
@@ -317,7 +318,7 @@ export const segarkan = async ({ host = HOST_BAWAAN } = {}) => {
     );
   }
 
-  // Halaman etalase tidak selalu beranda — selectors.json yang menentukan.
+  // Halaman etalase tidak selalu beranda — packages/sumber/selectors.js yang menentukan.
   // Kalau alamatnya ditulis di sana, itu yang dipakai; tanpa ini kolom `url`
   // di konfigurasi jadi hiasan dan host berikutnya akan dipindai di halaman
   // yang salah tanpa ada yang sadar.

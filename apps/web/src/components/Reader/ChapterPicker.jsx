@@ -72,7 +72,7 @@ const Baris = ({ chapter, aktif, atas, onPilih }) => {
   );
 };
 
-export const ChapterPicker = ({ comicId, chapterAktifId, onPilih, onClose }) => {
+export const ChapterPicker = ({ comicId, chapterAktifId, daftarLokal, onPilih, onClose }) => {
   const { data, isLoading, isError, refetch } = useGetChaptersQuery(
     { comicId, order: 'asc', ringkas: true },
     { skip: !comicId },
@@ -91,7 +91,11 @@ export const ChapterPicker = ({ comicId, chapterAktifId, onPilih, onClose }) => 
   // Urutan dibalik di sisi klien, bukan lewat permintaan baru: isinya persis
   // sama dan panjangnya bisa ratusan baris — memintanya dua kali hanya menambah
   // lalu lintas untuk sesuatu yang sudah ada di tangan.
-  const semua = useMemo(() => data?.items ?? [], [data]);
+  // daftarLokal hanya diisi build Android saat server tidak terjangkau: isinya
+  // chapter yang berkasnya ada di HP. Dipakai sebagai cadangan, bukan
+  // pengganti — begitu server menjawab, daftarnyalah yang benar, karena ia juga
+  // memuat chapter yang belum disimpan.
+  const semua = useMemo(() => data?.items ?? daftarLokal ?? [], [data, daftarLokal]);
   const terurut = useMemo(() => (urutTerbaru ? [...semua].reverse() : semua), [semua, urutTerbaru]);
 
   const cari = kueri.trim().toLowerCase();
@@ -212,6 +216,12 @@ export const ChapterPicker = ({ comicId, chapterAktifId, onPilih, onClose }) => 
     bukaHasilTeratas();
   };
 
+  // "Memuat" dan "gagal" hanya berlaku kalau memang tidak ada apa-apa untuk
+  // ditampilkan. Dengan daftar cadangan dari HP, permintaan yang gagal bukan
+  // kegagalan yang perlu dilihat siapa pun — daftarnya tetap terisi.
+  const memuatKosong = isLoading && semua.length === 0;
+  const gagalKosong = isError && semua.length === 0;
+
   const mulai = Math.max(0, Math.floor(scrollTop / TINGGI_BARIS) - SANGGA);
   const akhir = Math.min(
     tersaring.length,
@@ -287,11 +297,11 @@ export const ChapterPicker = ({ comicId, chapterAktifId, onPilih, onClose }) => 
         </form>
 
         <div ref={kotakRef} onScroll={saatScroll} className="relative flex-1 overflow-y-auto py-2">
-          {isLoading && (
+          {memuatKosong && (
             <p className="py-10 text-center text-sm text-paper/50">Memuat daftar chapter…</p>
           )}
 
-          {isError && (
+          {gagalKosong && (
             <div className="py-10 text-center">
               <p className="text-sm text-danger">Gagal memuat daftar chapter</p>
               <button
@@ -304,7 +314,7 @@ export const ChapterPicker = ({ comicId, chapterAktifId, onPilih, onClose }) => 
             </div>
           )}
 
-          {!isLoading && !isError && tersaring.length === 0 && (
+          {!memuatKosong && !gagalKosong && tersaring.length === 0 && (
             <p className="py-10 text-center text-sm text-paper/50">
               {cari ? `Tidak ada chapter yang cocok dengan "${kueri}"` : 'Belum ada chapter.'}
             </p>

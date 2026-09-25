@@ -64,7 +64,9 @@ router.post(
   asyncHandler(async (req, res) => {
     const diminta = req.body?.host ? String(req.body.host).trim().toLowerCase() : null;
     if (diminta && !scoutService.hostTerpindai().includes(diminta)) {
-      throw badRequest(`Tidak ada konfigurasi katalog untuk ${diminta} di selectors.json`);
+      throw badRequest(
+        `Tidak ada konfigurasi katalog untuk ${diminta} di packages/sumber/selectors.js`,
+      );
     }
 
     const penyegaran = await scoutService.segarkanSemua(diminta ? { hosts: [diminta] } : undefined);

@@ -406,10 +406,16 @@ Yang masuk antrian hanyalah URL halaman chapter; worker yang mengekstrak daftar
 gambarnya saat job diproses, jadi mengantre 200 chapter tetap instan.
 
 Desainnya **satu extractor generik + tabel selector**, bukan satu scraper per
-situs:
+situs. Mesinnya tinggal di workspace tersendiri, `packages/sumber`
+(`@naruread/sumber`), bukan di dalam `apps/api`: paket itu tidak menyentuh satu
+pun modul bawaan Node, jadi aturan baca situs yang sama bisa dijalankan server
+rumah maupun aplikasi Android saat pemiliknya tidak punya server.
 
-- `apps/api/src/services/sources/selectors.json` — peta host → preset/selector.
-  Kalau sebuah situs mengubah layout, yang diperbaiki hanya baris di file ini.
+- `packages/sumber/selectors.js` — peta host → preset/selector, dipakai bersama server dan aplikasi.
+  Kalau sebuah situs mengubah layout, yang diperbaiki hanya baris di file ini — tapi
+  tabelnya dibaca sekali saat modul dimuat, jadi server (dan worker) perlu dinyalakan
+  ulang supaya suntingannya berlaku. File ini kode, bukan data: jalankan
+  `npm run precheck` setelah menyunting supaya salah ketik ketahuan sebelum menyala.
 - Preset yang tersedia: `generic`, `wp-manga`, `ts-reader`.
 - Tanpa entri host, extractor memakai heuristik: daftar gambar dari JSON inline
   di `<script>` (pola paling akurat di tema populer), lalu fallback ke container
@@ -478,14 +484,14 @@ Etika & keamanan permintaan keluar:
 - `robots.txt` dipatuhi (`RESPECT_ROBOTS=true`), jeda `REQUEST_DELAY_MS` per host,
   `User-Agent` jujur, `Referer` dikirim (banyak CDN gambar menolak tanpa itu).
 - Host wajib ada di `ALLOWED_SOURCE_DOMAINS`; localhost & IP privat selalu ditolak.
-- `webtoons.com` ditandai `disabled` di `selectors.json` — layanan resmi berlisensi
+- `webtoons.com` ditandai `disabled` di `packages/sumber/selectors.js` — layanan resmi berlisensi
   yang ToS-nya melarang pengambilan otomatis. Hapus sendiri kalau memang mau.
 
 Catatan jujur soal status verifikasi: logika parser diuji lewat fixture
 (`npm run test:extractor`, 9 pemeriksaan), dan jalur fetch + robots + parsing
 sudah dicoba ke host nyata (HTTP 200, tidak diblokir). Tapi **selector untuk
 halaman seri tiap situs masih titik awal** — jalankan Deteksi pada satu URL seri
-sungguhan, dan kalau hasilnya kosong perbaiki selectors.json. Situs dengan
+sungguhan, dan kalau hasilnya kosong perbaiki `packages/sumber/selectors.js`. Situs dengan
 bot-protection (Cloudflare) akan gagal dengan pesan jelas; itu tidak diakali.
 
 ---

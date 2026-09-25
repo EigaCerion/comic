@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
 import { formatRelativeTime, statusColor } from '../../utils/format.js';
+import { urlMedia } from '../../platform/server.js';
 import { ProgressBar } from '../Common/index.jsx';
 
 const Cover = ({ comic, className }) =>
   comic.coverUrl ? (
     <img
-      src={comic.coverUrl}
+      src={urlMedia(comic.coverUrl)}
       alt={`Cover ${comic.title}`}
       className={className}
       loading="lazy"

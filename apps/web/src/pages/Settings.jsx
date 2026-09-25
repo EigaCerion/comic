@@ -7,6 +7,10 @@ import {
   useHealthQuery,
 } from '../api/apiSlice.js';
 import { ErrorState, Spinner } from '../components/Common/index.jsx';
+import { IS_APP } from '../platform/index.js';
+import KartuPembaruan from '../platform/KartuPembaruan.jsx';
+import KartuServerApp from '../platform/KartuServerApp.jsx';
+import { urlMedia } from '../platform/server.js';
 import { setTheme, setViewMode } from '../store/slices/uiSlice.js';
 import { setFit, setMode } from '../store/slices/readerSlice.js';
 import { formatBytes, formatDurasi, formatRelativeTime } from '../utils/format.js';
@@ -148,7 +152,7 @@ const ConnectCard = () => {
     <Card title="Sambungkan perangkat" icon="📱">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
         <img
-          src="/api/connect/qr"
+          src={urlMedia('/api/connect/qr')}
           alt="QR untuk membuka NaruReader di perangkat lain"
           className="h-40 w-40 flex-none rounded-lg bg-white p-2"
         />
@@ -218,6 +222,18 @@ export const Settings = () => {
       </p>
 
       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+        {/* Build android saja: di web, "server yang dipakai" selalu asal
+            halaman ini sendiri dan tidak ada yang bisa diganti. */}
+        {IS_APP && (
+          <>
+            <KartuServerApp />
+            {/* APK yang dipasang lewat sideload tidak punya toko aplikasi yang
+                memberi tahu kalau ada versi baru. Di web pertanyaannya tidak
+                ada — halamannya dimuat ulang dari server tiap kali dibuka. */}
+            <KartuPembaruan />
+          </>
+        )}
+
         <StatusServerCard />
 
         <ConnectCard />

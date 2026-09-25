@@ -20,7 +20,7 @@ import {
   MDNS_HOST,
   MDNS_ENABLED,
 } from '../src/services/connectService.js';
-import { preflight, cetakPreflight } from './preflight.js';
+import { preflight, cetakPreflight, cekTabelSumber } from './preflight.js';
 
 const SERVER = path.join(API_ROOT, 'src', 'server.js');
 const DIST = path.join(REPO_ROOT, 'apps', 'web', 'dist', 'index.html');
@@ -117,6 +117,24 @@ const main = async () => {
   // Server memakai logger yang sama; mode tenang membuatnya menulis ke berkas saja.
   // Disetel sebelum server diimpor, dan logger membacanya setiap kali menulis.
   process.env.LOG_CONSOLE = 'false';
+
+  // Diperiksa SEBELUM server diimpor, bukan bersama preflight di bawah: preflight
+  // baru dijalankan setelah health() menjawab, jadi kalau tabel selectornya salah
+  // ketik server tidak pernah menyala dan pemeriksaan itu tidak pernah kebagian
+  // jalan. Tanpa ini gejalanya hanya titik-titik selama 20 detik lalu "Gagal
+  // menyala", dengan SyntaxError-nya terkubur di error.log.
+  const tabel = await cekTabelSumber();
+  if (tabel.status === 'gagal') {
+    cetakPreflight([tabel]);
+    console.log('');
+    // Keluar bukan-nol supaya `if errorlevel 1 pause` di NaruReader.bat menahan
+    // jendelanya. Dengan `return` biasa main() selesai normal dan tidak ada handle
+    // yang tersisa (socket mDNS baru hidup lewat startMdns(), server belum diimpor),
+    // jadi node keluar dengan kode 0: jendela yang diklik dua kali berkedip lalu
+    // tertutup sebelum pesan di atas sempat terbaca — padahal gerbang ini ada justru
+    // untuk dibaca.
+    process.exit(1);
+  }
 
   process.stdout.write('\n   Menyalakan');
   const menyala = import(pathToFileURL(SERVER).href);

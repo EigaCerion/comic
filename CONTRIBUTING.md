@@ -172,7 +172,7 @@ Kalau ingin membantu tapi belum tahu mulai dari mana:
 | Bidang | Contoh pekerjaan |
 |---|---|
 | **Pengujian** | Menyiapkan kerangka uji (Vitest), uji unit untuk pengurai sumber dan pipeline kompresi |
-| **Sumber impor** | Menambah preset selector untuk situs baru di `apps/api/src/services/sources/selectors.json` |
+| **Sumber impor** | Menambah preset selector untuk situs baru di `packages/sumber/selectors.js` |
 | **Aksesibilitas** | Navigasi keyboard di pembaca, label ARIA, pengujian pembaca layar |
 | **Terjemahan** | Antarmuka saat ini hanya bahasa Indonesia |
 | **Dokumentasi** | Panduan pemasangan untuk macOS dan Linux (sekarang berfokus ke Windows) |

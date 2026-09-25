@@ -3,7 +3,8 @@ import { getDb } from '../db/index.js';
 import { createLogger } from '../utils/logger.js';
 import { notFound, safeJoin } from '../utils/validators.js';
 import { fetchHtml } from '../utils/httpClient.js';
-import { extractSeries, extractSeriesLink } from './sources/index.js';
+import { extractSeries, extractSeriesLink } from '@naruread/sumber';
+import '../utils/sumberLogger.js';
 import { chapterDir } from './chapterService.js';
 import { enqueueChapterDownload } from './downloadService.js';
 

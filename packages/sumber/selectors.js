@@ -1,0 +1,221 @@
+/*
+ * Tabel selector per host — dulu selectors.json.
+ *
+ * Kenapa JS, bukan JSON: berkas ini harus diimpor dengan cara yang SAMA dari
+ * server (Node) dan dari aplikasi Android (bundel Vite). Node menuntut import
+ * attributes untuk JSON ("with { type: 'json' }"), Vite tidak mengenalnya, dan
+ * membaca berkas lewat node:fs tidak mungkin di browser. Modul JS biasa adalah
+ * satu-satunya bentuk yang dimengerti keduanya tanpa syarat tambahan.
+ *
+ * "versi" SUDAH dipakai sekarang: apps/web/src/sumber/pola.js membandingkannya
+ * dengan versi yang ditawarkan server rumah lewat GET /api/sumber/pola, dan
+ * kalau server lebih baru tabelnya dipasang dengan pasangTabelPola() supaya
+ * situs yang berganti tema bisa diperbaiki tanpa merilis ulang APK. Karena itu
+ * SETIAP suntingan di berkas ini wajib menaikkan angkanya — tanpa itu, HP yang
+ * sudah menyimpan tabel lama tidak punya alasan untuk mengambil yang baru.
+ *
+ * Yang tetap terlarang: memutasi objek ini langsung (Object.assign ke
+ * selectors.hosts). Tabelnya satu modul untuk seumur proses, jadi mutasi
+ * seperti itu mencemari tabel bawaan APK tanpa jejak dan tanpa jalan pulang.
+ * pasangTabelPola() menukar rujukannya, bukan isinya, justru supaya tabel
+ * bawaan masih utuh saat tabel server ternyata yang rusak.
+ */
+export default {
+  "versi": 1,
+  "_readme": [
+    "Override selector per host. Kalau sebuah host tidak terdaftar, extractor memakai",
+    "heuristik generik (container dengan gambar terbanyak + pola link chapter).",
+    "Isi 'preset' dengan nama preset di packages/sumber/index.js, atau tulis selector sendiri.",
+    "Nilai di bawah adalah titik awal untuk tema WordPress komik yang umum —",
+    "kalau sebuah situs mengubah layout, yang diperbaiki cukup baris di file ini.",
+    "Tapi file ini KODE, bukan data: dulu selectors.json yang rusak hanya membuat",
+    "extractor turun ke heuristik, sekarang satu koma yang hilang adalah SyntaxError",
+    "yang membuat server tidak menyala sama sekali. Jalankan `npm run precheck`",
+    "setelah menyunting, dan nyalakan ulang server supaya suntingannya terbaca.",
+    "Blok \"katalog\" dipakai panel Scout untuk membaca halaman etalase (bukan halaman seri).",
+    "Kunci opsionalnya: tipe (elemen penanda tipe, dibaca dari teks, alt, lalu nama kelas),",
+    "keterangan (genre/waktu), dan labelChapter (span label di dalam tautan chapter, untuk",
+    "situs yang menempelkan waktu rilis ke label tanpa spasi)."
+  ],
+  "_katalog": [
+    "Blok 'katalog' dipakai extractKatalog untuk membaca halaman ETALASE (daftar",
+    "komik terbaru), bukan halaman satu seri. Host tanpa blok ini sengaja tidak",
+    "dipindai sama sekali — memindai semua <article> hanya akan memanen iklan.",
+    "  nama          label extractor yang dilaporkan ke pemanggil",
+    "  url           halaman etalase yang diambil",
+    "  bagian        daftar { nama, wadah }; nama masuk ke field 'bagian' tiap item",
+    "  kartu         selector satu kartu komik, dicari DI DALAM wadah",
+    "  tautanSeri    tautan ke halaman seri (boleh beberapa selector, dipisah koma)",
+    "  judul         elemen judul; teksnya dipakai apa adanya",
+    "  sampul        <img> sampul — data-src didahulukan, src lazy-load ditolak",
+    "  keterangan    teks '<genre> · <waktu>'; urutan dan kelengkapannya bebas",
+    "  tautanChapter tautan chapter terbaru; boleh tidak ada pada seri yang kosong",
+    "  tipeAttr      atribut di kartu yang memuat Manga/Manhwa/Manhua",
+    "  tipeDariAlt   true kalau alt sampul berbentuk 'Baca <tipe> <judul>'"
+  ],
+  "_cari": [
+    "Blok 'cari' dipakai extractPencarian untuk membaca halaman HASIL CARI situs sumber.",
+    "Bentuknya sama dengan blok 'katalog', ditambah:",
+    "  url           alamat pencarian; {q} diganti kata kunci yang sudah di-encode",
+    "  bagian        opsional; tanpa itu kartu dicari di seluruh halaman. Kalau diisi, wadah",
+    "                yang hilang dilaporkan sebagai tata letak berubah (wadah kosong = tidak ada hasil)",
+    "  keterangan    boleh berupa daftar selector; teksnya digabung dengan ' · '",
+    "  dasarTautan   alamat dasar tautan relatif, kalau halaman hasil cari dilayani host lain",
+    "                (komiku: api.komiku.org, sedangkan tautannya milik komiku.org)",
+    "  teksChapter   elemen berisi nomor chapter terbaru sebagai teks biasa, tanpa tautan",
+    "  tandaKosong   elemen yang muncul saat tidak ada hasil; kalau kartu dan tanda ini",
+    "                sama-sama tidak ada, halaman dilaporkan sebagai tata letak berubah",
+    "kiryuu.to sengaja TIDAK diberi blok cari: pencariannya lewat admin-ajax (POST + nonce),",
+    "dan GET ?s= terbukti mengabaikan kata kunci lalu mengembalikan judul populer yang tidak",
+    "berhubungan. Hasil seperti itu lebih menyesatkan daripada tidak ada hasil sama sekali."
+  ],
+  "hosts": {
+    "komiku.org": {
+      "preset": "generic",
+      "katalog": {
+        "nama": "komiku-katalog",
+        "url": "https://komiku.org/",
+        "bagian": [
+          {
+            "nama": "terbaru",
+            "wadah": "#Terbaru"
+          },
+          {
+            "nama": "baru",
+            "wadah": "#Baru_Ditambahkan"
+          }
+        ],
+        "kartu": "article.ls2",
+        "tautanSeri": ".ls2j h3 a, .ls2v > a[href]",
+        "judul": ".ls2j h3 a",
+        "sampul": ".ls2v img.lazy",
+        "keterangan": ".ls2t",
+        "tautanChapter": "a.ls2l",
+        "tipeAttr": "data-tipe",
+        "tipeDariAlt": true
+      },
+      "cari": {
+        "nama": "komiku-cari",
+        "url": "https://api.komiku.org/?post_type=manga&s={q}",
+        "dasarTautan": "https://komiku.org/",
+        "kartu": ".bge",
+        "tautanSeri": "a[href*='/manga/']",
+        "judul": ".kan h3",
+        "sampul": ".bgei img",
+        "tipe": ".tpe1_inf b",
+        "keterangan": [
+          ".tpe1_inf",
+          ".kan > p"
+        ],
+        "tautanChapter": ".new1:contains('Terbaru') a",
+        "labelChapter": "span:last-child",
+        "tandaKosong": ".no-results"
+      }
+    },
+    "komikpedia.net": {
+      "note": "Bukan tema wp-manga: situs Next.js, daftar chapter lengkap ada di payload <script>. Dibiarkan memakai heuristik + panen payload."
+    },
+    "mgkomik.id": {
+      "preset": "wp-manga"
+    },
+    "siikomik.net": {
+      "preset": "ts-reader"
+    },
+    "ngomik.cc": {
+      "preset": "ts-reader",
+      "katalog": {
+        "nama": "ngomik-katalog",
+        "url": "https://ngomik.cc/",
+        "bagian": [
+          {
+            "nama": "terbaru",
+            "wadah": ".postbody .listupd"
+          }
+        ],
+        "kartu": ".bs.stylefiv",
+        "tautanSeri": ".bsx a[href*='/manga/']",
+        "judul": ".tt",
+        "sampul": "img",
+        "tipe": "span.type",
+        "keterangan": ".fivtime",
+        "tautanChapter": "ul.chfiv li a",
+        "labelChapter": ".fivchap"
+      },
+      "cari": {
+        "nama": "ngomik-cari",
+        "url": "https://ngomik.cc/?s={q}",
+        "bagian": [
+          {
+            "nama": "cari",
+            "wadah": ".postbody .listupd"
+          }
+        ],
+        "kartu": ".bsx",
+        "tautanSeri": "a[href*='/manga/']",
+        "judul": ".tt",
+        "sampul": "img",
+        "tipe": "span.type",
+        "teksChapter": ".epxs",
+        "tandaKosong": ".postbody .listupd center h3"
+      }
+    },
+    "webtoons.com": {
+      "note": "Layanan resmi berlisensi; ToS-nya melarang pengambilan otomatis. Tidak disediakan preset.",
+      "disabled": true
+    },
+    "komikindo.ch": {
+      "katalog": {
+        "nama": "komikindo-katalog",
+        "url": "https://komikindo.ch/",
+        "bagian": [
+          {
+            "nama": "terbaru",
+            "wadah": ".post-show.chapterbaru .listupd"
+          }
+        ],
+        "kartu": ".animepost",
+        "tautanSeri": "a[href*='/komik/']",
+        "judul": ".tt h3",
+        "sampul": "img",
+        "tipe": ".typeflag",
+        "tautanChapter": ".lsch a"
+      },
+      "cari": {
+        "nama": "komikindo-cari",
+        "url": "https://komikindo.ch/?s={q}",
+        "bagian": [
+          {
+            "nama": "cari",
+            "wadah": ".postbody .listupd"
+          }
+        ],
+        "kartu": ".animepost",
+        "tautanSeri": "a[href*='/komik/']",
+        "judul": ".tt h3",
+        "sampul": "img",
+        "tipe": ".typeflag",
+        "tandaKosong": ".postbody .listupd .film-list:not(:has(*))"
+      }
+    },
+    "kiryuu.to": {
+      "katalog": {
+        "nama": "kiryuu-katalog",
+        "url": "https://kiryuu.to/",
+        "bagian": [
+          {
+            "nama": "terbaru",
+            "wadah": "div#latest-list"
+          }
+        ],
+        "kartu": "> div",
+        "tautanSeri": "a[href*='/manga/']",
+        "judul": "h1",
+        "sampul": "img.wp-post-image",
+        "tipe": "img[src*='/static/svg/']",
+        "keterangan": "a.link-self time",
+        "tautanChapter": "a.link-self",
+        "labelChapter": "p"
+      }
+    }
+  }
+};

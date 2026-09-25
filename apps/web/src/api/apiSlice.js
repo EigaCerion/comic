@@ -1,13 +1,78 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { IS_APP } from '../platform/index.js';
+import { alamatServer, setelToken, tokenSesi } from '../platform/server.js';
 
 // Dev: kosong (Vite proxy /api -> :3000). Prod: set VITE_API_URL.
 const BASE_URL = `${import.meta.env.VITE_API_URL ?? ''}/api`;
 
+// credentials: 'include' wajib — tanpa itu cookie sesi tidak pernah ikut
+// terkirim, dan setiap permintaan akan terlihat sebagai tamu.
+const baseQueryWeb = fetchBaseQuery({ baseUrl: BASE_URL, credentials: 'include' });
+
+/*
+ * Build android: server ada di mesin lain, dan cookie tidak bisa diandalkan.
+ *
+ * UI dimuat dari dalam APK (origin http://localhost) sementara API ada di
+ * http://192.168.x.x:3000 — bagi WebView itu cookie pihak ketiga, yang Android
+ * blokir diam-diam. Jadi sesi dibawa sebagai Bearer, dan servernya hanya mau
+ * menitipkan token itu kepada klien yang mengaku aplikasi lewat header di
+ * bawah. Seluruh blok ini hilang dari bundel web karena IS_APP runtuh jadi
+ * false saat build.
+ */
+
+// Alamat server bisa berganti saat aplikasi berjalan (disambung ulang lewat
+// /sambung), sedangkan baseUrl milik fetchBaseQuery dikunci saat dibuat. Yang
+// disimpan karena itu instansnya, dibuat ulang hanya ketika alamatnya benar-
+// benar berubah — bukan tiap permintaan.
+let dasarTerakhir = { alamat: undefined, jalankan: null };
+
+const dasarAndroid = (alamat) => {
+  if (dasarTerakhir.alamat !== alamat) {
+    dasarTerakhir = {
+      alamat,
+      jalankan: fetchBaseQuery({
+        baseUrl: `${alamat ?? ''}/api`,
+        credentials: 'include',
+        prepareHeaders: (headers) => {
+          headers.set('X-NaruReader-Klien', 'android');
+          const token = tokenSesi();
+          if (token) headers.set('Authorization', `Bearer ${token}`);
+          return headers;
+        },
+      }),
+    };
+  }
+  return dasarTerakhir.jalankan;
+};
+
+const JALUR_TOKEN_BARU = ['/auth/login', '/auth/register'];
+
+const baseQueryAndroid = async (args, apiRtk, extraOptions) => {
+  const jalur = typeof args === 'string' ? args : args?.url;
+  // Dicatat SEBELUM permintaan berangkat: kalau jawabannya 401, yang perlu
+  // diketahui adalah apakah permintaan ini tadi membawa token.
+  const membawaToken = Boolean(tokenSesi());
+
+  const hasil = await dasarAndroid(alamatServer())(args, apiRtk, extraOptions);
+
+  if (JALUR_TOKEN_BARU.includes(jalur) && hasil.data?.token) {
+    await setelToken(hasil.data.token);
+  } else if (jalur === '/auth/logout' && !hasil.error) {
+    await setelToken(null);
+  } else if (hasil.error?.status === 401 && membawaToken) {
+    // Dengan token yang masih sah server tidak pernah menjawab 401 — soal peran
+    // dijawab 403. Jadi 401 di sini hanya berarti sesinya sudah mati (server
+    // di-restart, sandi diganti dari perangkat lain), dan menahan tokennya
+    // membuat setiap permintaan berikutnya ikut ditolak tanpa ujung.
+    await setelToken(null);
+  }
+
+  return hasil;
+};
+
 export const api = createApi({
   reducerPath: 'api',
-  // credentials: 'include' wajib — tanpa itu cookie sesi tidak pernah ikut
-  // terkirim, dan setiap permintaan akan terlihat sebagai tamu.
-  baseQuery: fetchBaseQuery({ baseUrl: BASE_URL, credentials: 'include' }),
+  baseQuery: IS_APP ? baseQueryAndroid : baseQueryWeb,
   tagTypes: [
     'Comic',
     'Comics',

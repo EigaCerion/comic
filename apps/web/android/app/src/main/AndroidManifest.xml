@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        Server rumah dilayani http polos di LAN (192.168.x.x:3000) dan tidak akan
+        pernah punya sertifikat, jadi tanpa cleartext setiap panggilan API dan
+        setiap gambar halaman diputus Android sejak API 28 — aplikasinya terbuka
+        tapi kosong. Nilai yang sama memang sudah ada di manifes
+        capacitor-cordova-android-plugins dan ikut lewat merger, tetapi berkas itu
+        dihasilkan ulang oleh `cap sync`; ditulis di sini supaya syarat hidup-mati
+        aplikasi ini tidak bergantung pada berkas yang boleh ditimpa perkakas.
+    -->
+    <!--
+        allowBackup="false", bukan "true" bawaan template Capacitor.
+
+        @capacitor/preferences menyimpan segalanya di SharedPreferences bernama
+        "CapacitorStorage", dan yang ada di sana termasuk naruread:token-sesi
+        beserta naruread:alamat-server — kunci masuk ke server rumah pemiliknya.
+        Dengan allowBackup="true" dan tanpa aturan pengecualian, berkas itu ikut
+        cakupan Android Auto Backup, dan pada Android 8-10 (minSdkVersion di sini
+        26) `adb backup` menariknya keluar dari perangkat dalam bentuk terbaca,
+        tanpa root sama sekali. Untuk APK yang dibagikan terbuka lewat GitHub
+        Releases, itu berarti token server rumah bisa keluar dari HP siapa pun
+        yang mencadangkan aplikasinya. Folder chapter yang sudah diunduh
+        (Directory.Data) juga ikut cakupan itu, jadi kuota cadangan 25 MB dipakai
+        untuk mengunggah gambar komik.
+
+        Tidak ada yang hilang karena dimatikan: pemulihan Auto Backup hanya bisa
+        ke aplikasi dengan sertifikat penandatangan yang sama, dan aplikasi ini
+        baru saja berganti kunci — jadi justru pada satu-satunya kasus yang
+        membutuhkannya, pemulihan itu memang tidak berlaku.
+    -->
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
+        android:theme="@style/AppTheme">
+
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:name=".MainActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:launchMode="singleTask"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"></meta-data>
+        </provider>
+    </application>
+
+    <!-- Permissions -->
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+        Pemindai QR di halaman Sambung memakai @capacitor/barcode-scanner, dan
+        plugin itu membuka kamera SENDIRI di dalam proses kita (dependensinya
+        menarik androidx.camera), bukan menumpang UI pemindai Play Services.
+
+        Manifes plugin itu sendiri kosong: isinya benar-benar cuma tag manifest
+        tanpa anak. Artinya, sebelum baris ini ada, satu-satunya sumber izin
+        kamera adalah manifes AAR yang baru diunduh Gradle saat build — tidak
+        ada wujudnya di repo ini, jadi tidak bisa dibaca maupun diperiksa dari
+        sini. Menaikkan versi plugin bisa mencabutnya tanpa satu baris pun
+        berubah di sini, dan gejalanya baru muncul di perangkat: tombol Pindai
+        QR gagal tanpa dialog izin, sementara sisa aplikasi tampak sehat.
+
+        Dideklarasikan eksplisit supaya syaratnya ikut terbaca di tempat izin
+        lain berada, bukan tersembunyi di dependensi transitif.
+    -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!--
+        Aplikasi ini TIDAK PERNAH menulis ke penyimpanan publik: chapter mendarat
+        di Directory.Data, folder privatnya sendiri. Kedua izin ini hanya untuk
+        melewati gerbang @capacitor/file-transfer, yang memeriksa alias
+        publicStorage SEBELUM melihat jalur tujuan dan hanya menganggapnya
+        otomatis terpenuhi pada SDK >= 30.
+
+        minSdkVersion di sini 26, jadi APK ini terpasang sampai Android 8.0.
+        Tanpa deklarasi ini, di Android 8-10 permintaan izinnya ditolak Android
+        seketika tanpa dialog, dan SETIAP tombol Simpan berakhir dengan
+        OS-PLUG-FLTR-0006 pada berkas pertama — tidak ada satu chapter pun yang
+        bisa dibawa. Di Android 11+ semuanya jalan, jadi kegagalannya hanya
+        muncul di perangkat tertentu.
+
+        Diperiksa ulang saat menyiapkan APK rilis, karena izin penyimpanan pada
+        pembaca komik adalah salah satu hal yang membuat aplikasi sideload
+        terlihat mencurigakan. Bukti bahwa gerbangnya nyata ada di
+        node_modules/@capacitor/file-transfer/android/src/main/java/com/
+        capacitorjs/plugins/filetransfer/FileTransferPlugin.kt:
+
+            private fun isStoragePermissionGranted(): Boolean {
+                return Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ||
+                    getPermissionState(PUBLIC_STORAGE) == PermissionState.GRANTED
+            }
+
+        dipanggil di awal downloadFile() — SEBELUM jalur tujuan dilihat sama
+        sekali. Sisi aplikasi sudah sebersih mungkin: seluruh penulisan di
+        apps/web/src/offline memakai Directory.Data, dan satu-satunya pemanggil
+        plugin itu adalah turunkanBerkas() di offline/unduh.js. Jadi izin ini
+        dicabut bukan dengan menghapus baris ini, melainkan dengan berhenti
+        memakai file-transfer di bawah SDK 30 — dan jalur penggantinya
+        (fetch + writeFile base64 lewat jembatan) adalah yang dulu membunuh
+        aplikasi kehabisan memori pada strip webtoon 5 MB.
+
+        maxSdkVersion 29 supaya izin ini tidak ikut diminta di versi Android
+        yang memang tidak membutuhkannya — pada Android 11 ke atas ia tidak
+        muncul di daftar izin aplikasi sama sekali.
+    -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
+</manifest>

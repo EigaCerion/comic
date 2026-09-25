@@ -3,6 +3,24 @@ dist/
 build/
 coverage/
 
+# Hasil build Android. dist-android/ dan APK-nya adalah keluaran, bukan sumber;
+# local.properties memuat path SDK milik mesin ini (D:\Android) yang tidak
+# berlaku di mesin lain dan justru membuat build orang lain gagal.
+apps/web/dist-android/
+apps/web/dist-apk/
+apps/web/android/local.properties
+
+# Kunci penandatangan APK rilis. Berkas aslinya memang tinggal DI LUAR repo ini
+# (jalurnya disebut apps/web/android/app/build.gradle dan bisa ditimpa lewat
+# NARUREAD_KEY_PROPERTIES), jadi baris-baris ini tidak mengabaikan apa pun yang
+# ada sekarang. Gunanya satu: kalau suatu hari ada yang menyalinnya ke sini
+# "sebentar saja", ia tidak ikut ter-commit. Kunci yang bocor tidak bisa
+# ditarik kembali — siapa pun yang punya bisa membuat pembaruan yang menimpa
+# aplikasi ini di HP orang.
+*.keystore
+*.jks
+key.properties
+
 # environment
 .env
 .env.local

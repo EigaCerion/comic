@@ -1,0 +1,22 @@
+{
+  "name": "@naruread/sumber",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Mesin pembaca situs sumber: dipakai server rumah dan aplikasi Android dengan aturan yang sama persis",
+  "main": "index.js",
+  "sideEffects": false,
+  "exports": {
+    ".": "./index.js",
+    "./selectors.js": "./selectors.js"
+  },
+  "files": [
+    "index.js",
+    "selectors.js"
+  ],
+  "dependencies": {
+    "cheerio": "^1.2.0"
+  },
+  "license": "MIT",
+  "author": "Yusuf Aristokrat"
+}

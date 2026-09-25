@@ -32,6 +32,14 @@ router.put(
         comicId: chapter.comicId,
         chapterId: chapter.id,
         lastPageRead: req.body?.last_page_read ?? req.body?.lastPageRead ?? 1,
+        // Diisi hanya oleh aplikasi HP saat mengosongkan antrean offline: waktu
+        // saat halaman itu BENAR-BENAR dibaca, bukan saat paketnya akhirnya
+        // sampai. Tanpa itu jam server yang dipakai, seperti sebelumnya.
+        readAt: req.body?.read_at ?? req.body?.readAt ?? null,
+        // Jam HP saat paket ini berangkat. Dipasangkan dengan read_at supaya
+        // server memakai UMUR kiriman, bukan jam HP-nya, sehingga jam yang
+        // melenceng tidak menentukan siapa menang (lihat progressService).
+        dikirimPada: req.body?.dikirim_pada ?? req.body?.dikirimPada ?? null,
       }),
     );
   }),

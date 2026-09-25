@@ -1,4 +1,5 @@
 import { forwardRef } from 'react';
+import { urlMedia } from '../../platform/server.js';
 
 const fitClass = (fit) => {
   // dvh, bukan vh: di browser HP address bar ikut menghitung tinggi viewport.
@@ -14,7 +15,7 @@ const fitClass = (fit) => {
 export const PageImage = forwardRef(({ page, fit, zoom, eager = false, onClick }, ref) => (
   <img
     ref={ref}
-    src={page.url}
+    src={urlMedia(page.url)}
     alt={`Halaman ${page.number}`}
     data-page={page.number}
     onClick={onClick}

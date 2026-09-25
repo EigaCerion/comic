@@ -1,0 +1,270 @@
+apply plugin: 'com.android.application'
+
+/*
+ * ── Versi ────────────────────────────────────────────────────────────────
+ *
+ * Versinya datang dari apps/web/package.json lewat properti Gradle -PnaruVersi,
+ * yang diisi build-android.ps1. Angka di bawah cuma cadangan supaya
+ * `gradlew assembleDebug` dari Android Studio tetap jalan tanpa properti apa pun
+ * — dan HANYA untuk itu: build rilis tanpa properti itu ditolak di
+ * gradle.taskGraph.whenReady di bawah.
+ *
+ * Dulu di sini tertulis versionName "1.0" / versionCode 1 bawaan Capacitor,
+ * sementara package.json menyebut 0.1.0. Akibatnya bukan sekadar tidak rapi:
+ * pengecek pembaruan membandingkan versi APK yang TERPASANG dengan versi di
+ * nama berkas rilis, dan dengan dua sumber angka yang tidak pernah bertemu,
+ * perbandingan itu tidak berarti apa-apa.
+ */
+def versiBawaan = '0.1.0'
+def versiApl = (project.findProperty('naruVersi') ?: versiBawaan).toString().trim()
+
+if (!(versiApl ==~ /\d{1,6}\.\d{1,6}\.\d{1,6}/)) {
+    throw new GradleException(
+        "Versi aplikasi \"${versiApl}\" tidak berbentuk major.minor.patch. " +
+        "Nilainya berasal dari \"version\" di apps/web/package.json."
+    )
+}
+
+def bagianVersi = versiApl.tokenize('.')*.toInteger()
+
+/*
+ * versionCode HARUS naik terus. Android menolak memasang pembaruan yang
+ * versionCode-nya tidak lebih besar daripada yang sudah terpasang — dan
+ * penolakannya berbunyi "App not installed", tanpa menyebut versi sama sekali.
+ *
+ * Rumusnya mayor*10000 + minor*100 + tambalan: 0.1.0 -> 100, 0.2.0 -> 200,
+ * 0.9.0 -> 900, 0.10.0 -> 1000. Urutannya sama persis dengan urutan semver
+ * selama minor dan tambalan di bawah 100, jadi batas itu ditegakkan di sini
+ * ketimbang dibiarkan menghasilkan angka yang diam-diam mundur (0.1.100 dan
+ * 0.2.0 sama-sama 200).
+ */
+if (bagianVersi[1] > 99 || bagianVersi[2] > 99) {
+    throw new GradleException(
+        "Versi ${versiApl} tidak bisa dipetakan ke versionCode: minor dan patch harus di bawah 100. " +
+        "Naikkan angka di depannya."
+    )
+}
+
+def kodeVersi = bagianVersi[0] * 10000 + bagianVersi[1] * 100 + bagianVersi[2]
+
+/*
+ * ── Tanda tangan rilis ───────────────────────────────────────────────────
+ *
+ * APK yang dipasang lewat sideload dinilai Play Protect dari sertifikat
+ * penandatangannya. Selama build rilis ikut memakai kunci debug — sertifikat
+ * yang sama persis dimiliki setiap pemasangan Android SDK di dunia — aplikasinya
+ * dilaporkan berbahaya, dan itu benar: siapa pun bisa membuat "pembaruan" yang
+ * menimpanya.
+ *
+ * Kunci dan sandinya TIDAK ADA di repositori ini dan tidak boleh pernah masuk ke
+ * sini. Yang ada cuma jalur ke berkas properties di luar repo; isinya dibaca saat
+ * build. Jalurnya bisa ditimpa lewat NARUREAD_KEY_PROPERTIES supaya mesin lain
+ * (atau CI) tidak perlu meniru susunan folder mesin ini.
+ */
+def jalurPropKunci = System.getenv('NARUREAD_KEY_PROPERTIES') ?: 'D:/CODE/key/naruread/key.properties'
+def berkasPropKunci = new File(jalurPropKunci)
+
+/*
+ * Berkas itu dibaca SENDIRI, bukan lewat Properties.load().
+ *
+ * Properties Java memperlakukan backslash sebagai escape. storeFile di berkas itu
+ * ditulis sebagai jalur Windows (D:\CODE\key\...), jadi Properties.load mengubah
+ * "\n" di tengah jalurnya menjadi PERGANTIAN BARIS — dan "\k", "\C" hilang
+ * begitu saja. Hasilnya jalur yang rusak tanpa satu pun pesan, lalu build rilis
+ * berhenti dengan "storeFile tidak ditemukan" padahal berkasnya jelas ada.
+ * Terbukti persis begitu pada percobaan build rilis pertama. Perangkap yang sama
+ * sudah pernah menggigit dari arah sebaliknya di build-android.ps1, yang harus
+ * MENGGANDAKAN backslash saat menulis local.properties.
+ *
+ * Yang dibaca di sini cuma empat kunci berisi jalur dan sandi — tidak ada yang
+ * membutuhkan escape, dan menuntut orang menggandakan backslash di berkas
+ * kuncinya sendiri adalah cara lain untuk kehilangan satu hari.
+ */
+def bacaBerkasKunci = { File berkas ->
+    def peta = [:]
+    berkas.eachLine('UTF-8') { baris ->
+        // BOM membuat kunci pertama terbaca sebagai "\uFEFFstoreFile" dan
+        // seluruh berkas dianggap tidak lengkap.
+        def awal = baris.replaceFirst('^\uFEFF', '').replaceFirst('^[ \t]+', '')
+        if (awal.isEmpty() || awal.startsWith('#') || awal.startsWith('!')) return
+        def batas = awal.indexOf('=')
+        if (batas <= 0) return
+        // Hanya spasi di DEPAN nilai yang dibuang. Sandi boleh berakhir dengan
+        // spasi, dan memangkasnya berarti tanda tangan gagal dengan pesan yang
+        // menyalahkan keystore.
+        peta[awal.substring(0, batas).trim()] = awal.substring(batas + 1).replaceFirst('^[ \t]+', '')
+    }
+    return peta
+}
+
+def propKunci = [:]
+def alasanTanpaKunci = null
+def berkasSimpanan = null
+
+if (!berkasPropKunci.isFile()) {
+    alasanTanpaKunci = "berkas kunci tidak ada di ${jalurPropKunci}"
+} else {
+    propKunci = bacaBerkasKunci(berkasPropKunci)
+    def kurang = ['storeFile', 'storePassword', 'keyAlias', 'keyPassword'].findAll { !propKunci[it] }
+    if (!kurang.isEmpty()) {
+        alasanTanpaKunci = "berkas ${jalurPropKunci} belum memuat kunci: ${kurang.join(', ')}"
+    } else {
+        // storeFile boleh ditulis relatif terhadap berkas properties-nya sendiri,
+        // supaya seluruh isi folder kunci bisa dipindah tanpa menyunting apa pun.
+        berkasSimpanan = new File(propKunci['storeFile'].toString())
+        if (!berkasSimpanan.isAbsolute()) {
+            berkasSimpanan = new File(berkasPropKunci.parentFile, propKunci['storeFile'].toString())
+        }
+        if (!berkasSimpanan.isFile()) {
+            // Namanya SENGAJA tidak disebut: pesan galat Gradle ikut tercetak di
+            // log dan ditempel orang ke mana-mana.
+            alasanTanpaKunci = "storeFile yang disebut ${jalurPropKunci} tidak ditemukan"
+            berkasSimpanan = null
+        }
+    }
+}
+
+def adaKunci = alasanTanpaKunci == null
+
+/*
+ * Build DEBUG harus tetap jalan di mesin tanpa kunci — itu jalur yang dipakai
+ * sehari-hari dan tidak ada gunanya menuntut kunci rilis untuknya. Build RILIS
+ * tanpa kunci justru harus berhenti: kalau dibiarkan, AGP menghasilkan APK tak
+ * bertanda tangan (atau, lebih buruk, orang menambal dengan signingConfig debug)
+ * dan seluruh gunanya milestone ini hilang tanpa satu pun peringatan.
+ *
+ * Diperiksa saat graf tugas siap, bukan saat konfigurasi: di sinilah baru
+ * diketahui apakah yang diminta memang tugas rilis, dan ini masih SEBELUM tugas
+ * mana pun dijalankan — jadi kegagalannya muncul di detik pertama, bukan setelah
+ * beberapa menit kompilasi.
+ */
+gradle.taskGraph.whenReady { graf ->
+    def tugasRilis = graf.allTasks.find { it.name.toLowerCase().contains('release') }
+    if (tugasRilis == null) return
+
+    /*
+     * versiBawaan di atas melayani `gradlew assembleDebug` dari Android Studio,
+     * dan cuma itu. Ia angka MATI: tidak ada mekanisme apa pun yang membuatnya
+     * tetap sama dengan apps/web/package.json. Begitu package.json naik sekali
+     * saja, `gradlew assembleRelease` langsung dari folder ini — atau tombol
+     * Build APK varian release di Android Studio — menghasilkan APK BERTANDA
+     * TANGAN RILIS dengan versionCode yang basi, tanpa satu pun peringatan.
+     * versionCode yang tidak lebih besar daripada yang sudah terpasang ditolak
+     * Android dengan "App not installed", dan namanya pun app-release.apk, bukan
+     * NaruReader-<versi>.apk: kalau sempat terunggah, pengecek pembaruan tidak
+     * mengenali asetnya dan seluruh rilis itu berbunyi "belum punya berkas APK
+     * yang dikenali" bagi semua pemakai.
+     */
+    if (!project.hasProperty('naruVersi')) {
+        throw new GradleException(
+            "Build rilis harus lewat apps/web/scripts/build-android.ps1 — hanya skrip itu yang " +
+            "meneruskan versi dari apps/web/package.json sebagai -PnaruVersi.\n" +
+            "Tanpa properti itu versinya jatuh ke angka cadangan ${versiBawaan}, dan versionCode " +
+            "yang dihasilkannya bisa lebih kecil daripada yang sudah terpasang di HP.\n" +
+            "Untuk membangun dari Android Studio tanpa properti, pakai varian debug."
+        )
+    }
+
+    if (adaKunci) return
+    throw new GradleException(
+        "Build rilis butuh kunci penandatangan, tapi ${alasanTanpaKunci}.\n" +
+        "Isi berkas itu dengan storeFile, storePassword, keyAlias, keyPassword, " +
+        "atau tunjuk berkas lain lewat variabel lingkungan NARUREAD_KEY_PROPERTIES.\n" +
+        "Untuk membangun tanpa kunci, pakai tugas debug (build-android.ps1 -ModeDebug)."
+    )
+}
+
+android {
+    namespace = "id.naruread.app"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "id.naruread.app"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode kodeVersi
+        versionName versiApl
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        // Blok ini hanya diisi kalau kuncinya benar-benar ada. Mengisinya dengan
+        // nilai kosong membuat AGP gagal jauh di belakang dengan pesan tentang
+        // keystore null, dan itu justru menutupi sebabnya.
+        if (adaKunci) {
+            rilis {
+                storeFile berkasSimpanan
+                storePassword propKunci['storePassword']
+                keyAlias propKunci['keyAlias']
+                keyPassword propKunci['keyPassword']
+            }
+        }
+    }
+    buildTypes {
+        /*
+         * Paket debug dibedakan: id.naruread.app.debug.
+         *
+         * Sebelum ini keduanya memakai applicationId yang SAMA, sementara tanda
+         * tangannya berbeda selamanya (kunci debug SDK vs kunci rilis) — dan
+         * Android menolak memasang paket bersertifikat berbeda di atas paket
+         * yang sudah ada. Akibatnya jalur uji harian (build-android.ps1
+         * -ModeDebug) dan aplikasi yang benar-benar dipakai saling mengunci di
+         * satu HP: memasang yang satu menuntut mencopot yang lain, dan mencopot
+         * MENGHAPUS seluruh chapter yang sudah diunduh (Directory.Data) beserta
+         * alamat dan token servernya. Dengan awalan ini keduanya jadi dua
+         * aplikasi terpisah dengan folder data masing-masing.
+         *
+         * Otoritas FileProvider di AndroidManifest.xml sudah ditulis sebagai
+         * ${applicationId}.fileprovider, jadi ia ikut menyesuaikan sendiri dan
+         * tidak ada dua paket yang mengklaim otoritas yang sama.
+         */
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // Ditulis eksplisit walau memang bawaan AGP: android:debuggable="true"
+            // adalah sebab KEDUA Play Protect menandai APK ini berbahaya (yang
+            // pertama sertifikat debug). Dua-duanya tidak terlihat dari kode, jadi
+            // keduanya dinyatakan di tempat yang bisa dibaca.
+            debuggable false
+            if (adaKunci) {
+                signingConfig signingConfigs.rilis
+            }
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

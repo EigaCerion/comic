@@ -208,8 +208,23 @@ export const toggleFavorite = (id) => {
   return updateComic(comic.id, { isFavorite: !comic.isFavorite });
 };
 
-export const touchComic = (id) => {
-  getDb().prepare("UPDATE comics SET last_read_at = datetime('now') WHERE id = ?").run(id);
+/**
+ * @param {number} id
+ * @param {string|null} waktu waktu baca yang benar-benar tersimpan barisnya.
+ *
+ * MAX() dipakai supaya kiriman luring yang umurnya berjam-jam tidak pernah
+ * MEMAJUKAN urutan "terakhir dibaca" melampaui bacaan yang sudah lebih baru,
+ * dan tidak pula memundurkannya. Perbandingannya string, dan itu aman: semua
+ * penulisnya memakai bentuk 'YYYY-MM-DD HH:MM:SS' yang sama panjang.
+ */
+export const touchComic = (id, waktu = null) => {
+  getDb()
+    .prepare(
+      `UPDATE comics
+          SET last_read_at = MAX(COALESCE(last_read_at, ''), COALESCE(?, datetime('now')))
+        WHERE id = ?`,
+    )
+    .run(waktu, id);
 };
 
 export const recountChapters = (comicId) => {

@@ -25,6 +25,24 @@ const bacaCookie = (header, nama) => {
 };
 
 /**
+ * Ambil token dari "Authorization: Bearer <token>".
+ *
+ * Aplikasi Android memuat UI-nya dari http://localhost di dalam WebView, sedang
+ * servernya di http://192.168.x.x:3000. Itu dua origin yang berbeda, jadi
+ * cookie sesi ber-sameSite=lax TIDAK PERNAH ikut terkirim ke sana — dan
+ * melonggarkannya ke sameSite=none bukan jawabannya, karena browser hanya mau
+ * menerima itu bersama flag secure, yang mustahil di LAN tanpa https.
+ *
+ * Yang dibawa persis token opaque yang sama yang sudah tersimpan di tabel
+ * sessions, jadi tidak ada jalur kepercayaan baru yang dibuka di sini: hanya
+ * cara mengangkutnya yang berbeda, dan pencabutannya tetap satu tempat.
+ */
+const bacaBearer = (header) => {
+  const cocok = /^Bearer\s+(\S+)$/i.exec(String(header ?? '').trim());
+  return cocok ? cocok[1] : null;
+};
+
+/**
  * Menempelkan req.user kalau ada sesi yang sah — TIDAK menolak siapa pun.
  *
  * Dipasang global karena membaca komik memang tidak butuh akun: sebagian besar
@@ -32,9 +50,36 @@ const bacaCookie = (header, nama) => {
  * kebetulan sedang login (mis. untuk menandai rating miliknya sendiri).
  */
 export const bacaSesi = (req, _res, next) => {
-  const token = bacaCookie(req.headers.cookie, NAMA_COOKIE);
+  // Cookie tetap didahulukan supaya browser sama sekali tidak berubah
+  // perilakunya, tapi yang menentukan adalah sesi yang BENAR-BENAR terpecahkan,
+  // bukan ada-tidaknya cookie. Dulu `??` bekerja pada NILAI cookie: begitu
+  // header Cookie memuat naruread_sesi apa pun isinya, header Authorization
+  // tidak pernah dilihat lagi. Build android sengaja juga dibuka di browser
+  // desktop (lihat ASLI_NATIF di platform/index.js), dan di sana origin-nya
+  // satu situs dengan server — port diabaikan cookie — sehingga cookie UI web
+  // ikut terkirim bersama Bearer. Tiga akibatnya sudah diuji: cookie yang mati,
+  // mis. sesudah ganti sandi memanggil hapusSemuaSesi, MEMBATALKAN Bearer yang
+  // sah sehingga tiap rute berwajibLogin membalas 401; cookie milik akun lain
+  // diam-diam mengambil alih permintaan aplikasi sehingga posisi baca mendarat
+  // di akun yang salah; dan /auth/logout mencabut sesi cookie sambil
+  // MEMBIARKAN sesi Bearer hidup, padahal apiSlice.js sudah membuang tokennya —
+  // sesi yatim sampai kedaluwarsa 30 hari.
+  //
+  // req.sesiToken karena itu selalu menunjuk token yang sungguh melayani
+  // permintaan ini: tanpa itu /auth/logout membalas "keluar" atas sesi yang
+  // salah dan membiarkan yang benar hidup terus.
+  const dariCookie = bacaCookie(req.headers.cookie, NAMA_COOKIE);
+  const dariBearer = bacaBearer(req.headers.authorization);
+
+  let token = dariCookie;
+  let user = token ? userDariToken(token) : null;
+  if (!user && dariBearer) {
+    token = dariBearer;
+    user = userDariToken(token);
+  }
+
   req.sesiToken = token;
-  req.user = token ? userDariToken(token) : null;
+  req.user = user;
   next();
 };
 

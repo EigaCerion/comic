@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { IS_APP } from '../../platform/index.js';
+import { PenjelasanGagal } from '../../offline/KabarLuring.jsx';
 
 export const Spinner = ({ label = 'Memuat…' }) => (
   <div className="flex items-center justify-center gap-3 py-12 text-sm text-night/60 dark:text-paper/60">
@@ -23,9 +25,16 @@ export const EmptyState = ({ icon = '🍃', title, description, action }) => (
 export const ErrorState = ({ error, onRetry }) => (
   <div className="card border-danger/40 px-6 py-10 text-center">
     <p className="text-sm font-semibold text-danger">Gagal memuat data</p>
-    <p className="mt-2 text-xs text-night/60 dark:text-paper/60">
-      {error?.data?.error ?? error?.error ?? 'Pastikan API di http://localhost:3000 sudah jalan.'}
-    </p>
+    {/* Build android: pesan bawaan menyuruh memeriksa localhost:3000, yang di
+        HP tidak menunjuk ke mana-mana. Ekspresi ini runtuh jadi cabang kedua
+        saat build web, dan modulnya ikut dibuang Rollup. */}
+    {IS_APP ? (
+      <PenjelasanGagal error={error} />
+    ) : (
+      <p className="mt-2 text-xs text-night/60 dark:text-paper/60">
+        {error?.data?.error ?? error?.error ?? 'Pastikan API di http://localhost:3000 sudah jalan.'}
+      </p>
+    )}
     {onRetry && (
       <button type="button" className="btn-ghost mt-4" onClick={onRetry}>
         Coba lagi

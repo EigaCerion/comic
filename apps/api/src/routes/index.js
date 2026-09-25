@@ -7,6 +7,7 @@ import downloads from './downloads.js';
 import uploads from './uploads.js';
 import imports from './imports.js';
 import scout from './scout.js';
+import sumber from './sumber.js';
 import audit from './audit.js';
 import connect from './connect.js';
 import bookmarks from './bookmarks.js';
@@ -38,6 +39,12 @@ router.get('/health', (_req, res) => {
     idProses: ID_PROSES,
   });
 });
+
+// Tabel pola situs sumber untuk aplikasi Android. Sengaja setinggi ini,
+// bersama /health: keduanya dipakai perangkat yang BELUM punya sesi, dan
+// menaruhnya di bawah salah satu penjagaan di bawah berarti pembaruan tabel
+// hanya sampai ke orang yang kebetulan sudah masuk.
+router.use('/sumber', sumber);
 
 // Terbuka untuk siapa pun — membaca komik tidak butuh akun. Penjagaan di
 // dalamnya bersifat per-rute: GET bebas, perubahan data butuh izin.

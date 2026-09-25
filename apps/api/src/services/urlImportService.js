@@ -2,7 +2,8 @@ import { getDb } from '../db/index.js';
 import { createLogger } from '../utils/logger.js';
 import { badRequest, domainSumber, sanitizeSourceUrl, slugify } from '../utils/validators.js';
 import { fetchHtml } from '../utils/httpClient.js';
-import { extractChapterPages, extractSeries, resolveSourceConfig } from './sources/index.js';
+import { extractChapterPages, extractSeries, resolveSourceConfig } from '@naruread/sumber';
+import '../utils/sumberLogger.js';
 import { createComic, getComic } from './comicService.js';
 import { setCoverFromUrl } from './coverService.js';
 import { enqueueChapterDownload } from './downloadService.js';
@@ -38,7 +39,7 @@ export const previewSeries = async (input) => {
     existingComic: existing ? { id: existing.id, slug: existing.slug, totalChapters: existing.totalChapters } : null,
     warning:
       series.chapters.length === 0
-        ? 'Tidak ada link chapter yang terdeteksi. Perbaiki selector host ini di apps/api/src/services/sources/selectors.json, atau tempel URL chapter langsung.'
+        ? 'Tidak ada link chapter yang terdeteksi. Perbaiki selector host ini di packages/sumber/selectors.js, atau tempel URL chapter langsung.'
         : null,
   };
 };

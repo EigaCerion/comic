@@ -17,6 +17,9 @@ import {
 import { ErrorState, ProgressBar, Spinner } from '../components/Common/index.jsx';
 import { RatingKomentar } from '../components/Interaksi/RatingKomentar.jsx';
 import { useAuth } from '../hooks/useAuth.js';
+import { IS_APP } from '../platform/index.js';
+import { urlMedia } from '../platform/server.js';
+import { TombolSimpanChapter, TombolSimpanMassal } from '../offline/SimpanKeHP.jsx';
 import { showToast } from '../store/slices/uiSlice.js';
 import { formatBytes, formatChapterNumber, formatRelativeTime, statusColor } from '../utils/format.js';
 
@@ -455,7 +458,7 @@ export const ComicDetail = () => {
         <div className="w-full flex-none sm:w-52">
           {comic.coverUrl ? (
             <img
-              src={comic.coverUrl}
+              src={urlMedia(comic.coverUrl)}
               alt={`Cover ${comic.title}`}
               className="w-full rounded-lg object-cover shadow-scroll"
             />
@@ -520,6 +523,11 @@ export const ComicDetail = () => {
             <button type="button" className="btn-ghost" onClick={() => toggleFavorite(comic.id)}>
               {comic.isFavorite ? '★ Favorit' : '☆ Favoritkan'}
             </button>
+            {/* Build android saja: bekal baca tanpa server, dimulai dari titik
+                lanjut baca — bukan dari chapter pertama. */}
+            {IS_APP && (
+              <TombolSimpanMassal comic={comic} chapters={chapters} mulaiDari={lanjutKe} />
+            )}
             {bisa('unggah_chapter') && (
               <Link to={`/upload?comic=${comic.id}`} className="btn-ghost">
                 📤 Upload chapter
@@ -620,28 +628,33 @@ export const ComicDetail = () => {
                     <span className="flex-none text-xs opacity-60">{disabled ? '⏳' : '›'}</span>
                   </Wrapper>
 
-                  {kelola && (
+                  {(kelola || IS_APP) && (
                     <div className="flex flex-none items-center gap-1 pr-3 sm:pr-4">
-                      <button
-                        type="button"
-                        className={`btn-ghost px-2 py-1 text-xs ${formTerbuka ? 'border-naruto/50 text-naruto' : ''}`}
-                        onClick={() => setChapterDiganti(formTerbuka ? null : chapter.id)}
-                        aria-expanded={formTerbuka}
-                        aria-controls={`ganti-chapter-${chapter.id}`}
-                        aria-label={`Ganti chapter ${nomor}`}
-                        title="Unduh ulang dari tautan lain"
-                      >
-                        Ganti
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-ghost px-2 py-1 text-xs text-danger"
-                        onClick={() => hapusChapter(chapter)}
-                        disabled={sedangHapus === chapter.id}
-                        aria-label={`Hapus chapter ${nomor}`}
-                      >
-                        {sedangHapus === chapter.id ? 'Menghapus…' : 'Hapus'}
-                      </button>
+                      {IS_APP && <TombolSimpanChapter comic={comic} chapter={chapter} />}
+                      {kelola && (
+                        <button
+                          type="button"
+                          className={`btn-ghost px-2 py-1 text-xs ${formTerbuka ? 'border-naruto/50 text-naruto' : ''}`}
+                          onClick={() => setChapterDiganti(formTerbuka ? null : chapter.id)}
+                          aria-expanded={formTerbuka}
+                          aria-controls={`ganti-chapter-${chapter.id}`}
+                          aria-label={`Ganti chapter ${nomor}`}
+                          title="Unduh ulang dari tautan lain"
+                        >
+                          Ganti
+                        </button>
+                      )}
+                      {kelola && (
+                        <button
+                          type="button"
+                          className="btn-ghost px-2 py-1 text-xs text-danger"
+                          onClick={() => hapusChapter(chapter)}
+                          disabled={sedangHapus === chapter.id}
+                          aria-label={`Hapus chapter ${nomor}`}
+                        >
+                          {sedangHapus === chapter.id ? 'Menghapus…' : 'Hapus'}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

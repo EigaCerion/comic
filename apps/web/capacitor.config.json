@@ -1,0 +1,9 @@
+{
+  "appId": "id.naruread.app",
+  "appName": "NaruReader",
+  "webDir": "dist-android",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  }
+}

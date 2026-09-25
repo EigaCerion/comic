@@ -4,11 +4,19 @@ import { useDispatch, useSelector } from 'react-redux';
 import { closeSidebar } from '../../store/slices/uiSlice.js';
 import { useGetDownloadsQuery, useLogoutMutation } from '../../api/apiSlice.js';
 import { useAuth } from '../../hooks/useAuth.js';
+import { IS_APP } from '../../platform/index.js';
 
 const NAV = [
   { to: '/', label: 'Beranda', icon: '🏠', end: true },
   { to: '/browse', label: 'Jelajahi', icon: '🗺️' },
   { to: '/browse?favorite=true', label: 'Favorit', icon: '⭐' },
+  // Build android saja. Ditaruh setinggi ini, bukan di dasar daftar, karena saat
+  // server tidak terjangkau ia satu-satunya menu yang masih ada isinya.
+  ...(IS_APP ? [{ to: '/offline', label: 'Tersimpan di HP', icon: '📴' }] : []),
+  // Build android saja: membaca situs sumber langsung dari HP. Sengaja tanpa
+  // `butuh` — menu ini justru untuk aplikasi yang belum kenal server mana pun,
+  // jadi tidak ada izin di server yang bisa diperiksa untuknya.
+  ...(IS_APP ? [{ to: '/sumber', label: 'Situs Sumber', icon: '🌐' }] : []),
   { to: '/downloads', label: 'Unduhan', icon: '📥', badge: 'downloads', butuh: 'kelola_koleksi' },
   { to: '/scout', label: 'Scout', icon: '🔭', butuh: 'kelola_koleksi' },
   { to: '/import', label: 'Import', icon: '📦', butuh: 'kelola_koleksi' },

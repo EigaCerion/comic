@@ -8,7 +8,8 @@ import { fetchHtml, fetchImage } from '../utils/httpClient.js';
 import { safeJoin, sanitizeSourceUrl } from '../utils/validators.js';
 import { chapterDir, replacePages } from '../services/chapterService.js';
 import { compressToFile, pageFilename } from '../services/compressionService.js';
-import { extractChapterPages } from '../services/sources/index.js';
+import { extractChapterPages } from '@naruread/sumber';
+import '../utils/sumberLogger.js';
 import { ensureCover } from '../services/coverService.js';
 import { verifyPageFile } from '../services/auditService.js';
 import { notifyChapterDone } from './supervisorPool.js';
@@ -44,7 +45,7 @@ const resolveImageUrls = async (job) => {
   const { imageUrls, extractor, hostFallbacks } = extractChapterPages(html, finalUrl);
   if (!imageUrls.length) {
     throw new Error(
-      `Tidak ada gambar terdeteksi di ${payload.chapter_url} — perbaiki selector host ini di sources/selectors.json`,
+      `Tidak ada gambar terdeteksi di ${payload.chapter_url} — perbaiki selector host ini di packages/sumber/selectors.js`,
     );
   }
 

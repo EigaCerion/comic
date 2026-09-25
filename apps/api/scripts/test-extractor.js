@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Uji extractor terhadap fixture HTML yang meniru tema pembaca komik umum.
 // Tidak menyentuh jaringan — dipakai untuk memastikan logika parsing tidak rusak
-// setelah selectors.json atau heuristiknya diubah.
-import { extractChapterPages, extractSeries } from '../src/services/sources/index.js';
+// setelah packages/sumber/selectors.js atau heuristiknya diubah.
+import { extractChapterPages, extractSeries } from '@naruread/sumber';
+import '../src/utils/sumberLogger.js';
 
 let failed = 0;
 
@@ -87,7 +88,7 @@ check('heuristik: container dengan gambar terbanyak dipilih', p3.imageUrls, [
   'https://komiku.org/pages/c.jpg',
 ]);
 
-// ── Fixture 5: host yang dimatikan di selectors.json ─────────────────────
+// ── Fixture 5: host yang dimatikan di packages/sumber/selectors.js ───────
 try {
   extractChapterPages('<html></html>', 'https://www.webtoons.com/id/uji/viewer');
   check('host disabled: harus melempar error', false, true);

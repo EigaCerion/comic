@@ -5,7 +5,8 @@
   "description": "NaruReader - aplikasi pembaca komik lokal (Phase 1 MVP)",
   "workspaces": [
     "apps/api",
-    "apps/web"
+    "apps/web",
+    "packages/sumber"
   ],
   "scripts": {
     "dev": "concurrently -n api,web -c green,yellow \"npm:dev:api\" \"npm:dev:web\"",

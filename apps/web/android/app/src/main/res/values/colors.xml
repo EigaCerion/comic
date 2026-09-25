@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Warna latar jendela. Terlihat di jalur tipis di belakang status bar dan
+      bilah navigasi, yaitu bagian yang tidak lagi ditempati WebView sejak
+      fitsSystemWindows dipasang di activity_main.xml.
+
+      Diambil dari latar gelap aplikasi (night di styles/theme.css) karena tema
+      bawaan aplikasi memang gelap (uiSlice: theme ?? 'dark'). Tanpa ini yang
+      muncul adalah latar putih bawaan Theme.AppCompat, dan hasilnya pita putih
+      menyala di atas aplikasi gelap setiap kali aplikasi dibuka.
+    -->
+    <color name="latarNaruReader">#0f1419</color>
+</resources>

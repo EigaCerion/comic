@@ -201,6 +201,46 @@ const cekPerubahanAlamat = (alamat) => {
   );
 };
 
+/**
+ * Bentuk tabel selector. Satu-satunya pemeriksaan di berkas ini yang bukan soal
+ * jaringan, dan ada alasannya: sejak tabelnya pindah ke packages/sumber/selectors.js
+ * ia bukan lagi JSON yang dibaca dengan try/catch (dulu berkas rusak cuma bikin
+ * extractor turun ke heuristik), melainkan modul JS yang diimpor statis oleh
+ * server. Satu koma yang hilang saat menambah host baru = SyntaxError yang
+ * menjatuhkan seluruh graf impor sebelum Express naik, jadi pustaka yang sudah
+ * terunduh pun ikut tidak bisa dibuka. Berkas inilah yang paling sering disunting
+ * pemilik, jadi murah sekali memeriksanya lebih dulu.
+ *
+ * Diimpor dinamis di dalam try — kalau dipasang sebagai impor statis di kepala
+ * berkas, pemeriksanya ikut mati bersama tabelnya dan pesan aslinya hilang.
+ */
+export const cekTabelSumber = async () => {
+  try {
+    const { default: tabel } = await import('@naruread/sumber/selectors.js');
+    const jumlah = Object.keys(tabel?.hosts ?? {}).length;
+    if (!tabel?.hosts || typeof tabel.hosts !== 'object' || jumlah === 0) {
+      return cek(
+        'Tabel',
+        'gagal',
+        'packages/sumber/selectors.js terbaca tapi tidak punya isi "hosts"',
+        'Kembalikan bentuknya: export default { "versi": N, "hosts": { ... } }',
+      );
+    }
+    return cek('Tabel', 'ok', `${jumlah} host sumber terbaca`);
+  } catch (error) {
+    return cek(
+      'Tabel',
+      'gagal',
+      `packages/sumber/selectors.js tidak bisa dimuat: ${error.message}`,
+      // Catch yang sama menangkap dua hal: salah ketik di tabelnya, dan klon baru yang
+      // belum `npm install` sehingga @naruread/sumber belum ter-link sama sekali
+      // (ERR_MODULE_NOT_FOUND). Menyebut ketikan saja menyuruh orang mengaduk berkas
+      // yang sebenarnya tidak apa-apa.
+      'Perbaiki ketikannya (koma/kurung/kutip), atau jalankan `npm install` kalau ini klon baru — selama gagal dimuat, server tidak akan menyala.',
+    );
+  }
+};
+
 /** Beberapa adapter aktif bersamaan sering membuat orang memakai IP yang salah. */
 const cekAdapter = (daftar, rute) => {
   if (daftar.length <= 1) return cek('Adapter', 'ok', daftar[0]?.name ?? 'tidak ada');
@@ -234,6 +274,7 @@ export const preflight = async () => {
   const { kategori, hasil: hasilKategori } = await cekKategori();
 
   return [
+    await cekTabelSumber(),
     cekPerubahanAlamat(rute),
     hasilKategori,
     await cekFirewall(kategori),

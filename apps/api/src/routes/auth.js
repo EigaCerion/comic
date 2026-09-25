@@ -11,6 +11,25 @@ const router = Router();
 const kemampuanPeran = (peran) =>
   Object.keys(KEMAMPUAN).filter((nama) => bolehkah(peran, nama));
 
+/**
+ * Klien yang mengaku aplikasi Android lewat header "X-NaruReader-Klien".
+ *
+ * Hanya dia yang ikut menerima token sesi di badan balasan, karena hanya dia
+ * yang tidak bisa memakai cookie: WebView memuat UI dari http://localhost
+ * sementara server ada di http://192.168.x.x:3000.
+ *
+ * Browser sengaja TIDAK diberi token. Cookie sesi di sini httpOnly justru
+ * supaya JavaScript halaman tidak bisa membacanya; menaruh nilai yang sama di
+ * badan balasan akan membatalkan perlindungan itu untuk semua orang demi satu
+ * klien. Jadi bentuk balasan untuk browser tetap persis seperti sebelumnya.
+ *
+ * Kuncinya ditulis huruf kecil semua karena Node menurunkan nama header, dan
+ * "NaruReader" jadi "narureader" — sempat tertulis "naruread" di sini dan
+ * akibatnya token tidak pernah ikut keluar sama sekali.
+ */
+const klienAplikasi = (req) =>
+  String(req.headers['x-narureader-klien'] ?? '').trim().toLowerCase() === 'android';
+
 // POST /api/auth/login
 router.post(
   '/login',
@@ -33,7 +52,11 @@ router.post(
     }
     resetGagal(req);
     res.cookie(NAMA_COOKIE, hasil.token, opsiCookie(hasil.kedaluwarsa));
-    res.json({ user: hasil.user, kemampuan: kemampuanPeran(hasil.user.role) });
+    res.json({
+      user: hasil.user,
+      kemampuan: kemampuanPeran(hasil.user.role),
+      ...(klienAplikasi(req) ? { token: hasil.token, kedaluwarsa: hasil.kedaluwarsa } : {}),
+    });
   }),
 );
 
@@ -70,7 +93,11 @@ router.post(
       userAgent: req.headers['user-agent'],
     });
     res.cookie(NAMA_COOKIE, token, opsiCookie(kedaluwarsa));
-    res.status(201).json({ user, kemampuan: kemampuanPeran(user.role) });
+    res.status(201).json({
+      user,
+      kemampuan: kemampuanPeran(user.role),
+      ...(klienAplikasi(req) ? { token, kedaluwarsa } : {}),
+    });
   }),
 );
 
