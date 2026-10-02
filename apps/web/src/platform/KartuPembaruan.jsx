@@ -37,7 +37,7 @@ import { formatRelativeTime } from '../utils/format.js';
 const waktuRelatif = (ms) => (Number.isFinite(ms) ? formatRelativeTime(new Date(ms).toISOString()) : 'belum pernah');
 
 const Baris = ({ label, nilai }) => (
-  <div className="flex items-center justify-between border-b border-paper-line py-2 text-sm last:border-0 dark:border-night-line">
+  <div className="flex items-center justify-between border-b border-line py-2 text-sm last:border-0">
     <span className="opacity-60">{label}</span>
     <span className="font-mono font-semibold">{nilai}</span>
   </div>
@@ -71,16 +71,16 @@ export const KartuPembaruan = () => {
   // baru disiarkan setelah penyiapan selesai membaca Preferences, sementara
   // tombol di bawah sudah aktif sejak render pertama.
   const nada = adaPembaruan
-    ? { titik: 'bg-naruto', teks: 'text-naruto', label: `Versi ${versiRilis} tersedia` }
+    ? { titik: 'bg-primary', teks: 'text-primary', label: `Versi ${versiRilis} tersedia` }
     : sedangMemeriksa
-      ? { titik: 'bg-night/30 dark:bg-paper/30', teks: 'opacity-60', label: 'Memeriksa…' }
+      ? { titik: 'bg-txt-2/40', teks: 'opacity-60', label: 'Memeriksa…' }
       : galat
-        ? { titik: 'bg-rose-500', teks: 'text-rose-500', label: 'Belum bisa diperiksa' }
+        ? { titik: 'bg-danger', teks: 'text-danger', label: 'Belum bisa diperiksa' }
         : versiTerpasang == null
-          ? { titik: 'bg-night/30 dark:bg-paper/30', teks: 'opacity-60', label: 'Versi terpasang belum diketahui' }
+          ? { titik: 'bg-txt-2/40', teks: 'opacity-60', label: 'Versi terpasang belum diketahui' }
           : diperiksaPada
-            ? { titik: 'bg-emerald-500', teks: 'text-emerald-500', label: 'Sudah versi terbaru' }
-            : { titik: 'bg-night/30 dark:bg-paper/30', teks: 'opacity-60', label: 'Belum pernah diperiksa' };
+            ? { titik: 'bg-success', teks: 'text-success', label: 'Sudah versi terbaru' }
+            : { titik: 'bg-txt-2/40', teks: 'opacity-60', label: 'Belum pernah diperiksa' };
 
   return (
     <section className="card p-5">
@@ -124,8 +124,8 @@ export const KartuPembaruan = () => {
           dimulai dari aplikasi ini, melainkan dari notifikasi unduhan, dan
           Android akan menyela sekali dengan permintaan izin. */}
       {sedangDiunduh && (
-        <div className="mt-3 rounded-lg bg-naruto/10 px-3 py-2 text-xs">
-          <p className="font-semibold text-naruto">Unduhan berjalan di browser</p>
+        <div className="mt-3 rounded-lg bg-primary/10 px-3 py-2 text-xs">
+          <p className="font-semibold text-primary">Unduhan berjalan di browser</p>
           <ol className="mt-1 list-decimal space-y-1 pl-4 opacity-70">
             <li>Biarkan browser menyelesaikannya. Aplikasi ini boleh ditutup.</li>
             <li>Buka notifikasi unduhan selesai, atau menu Unduhan di browser.</li>

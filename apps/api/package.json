@@ -25,6 +25,8 @@
     "test:audit": "node scripts/test-audit.js",
     "test:rentang": "node scripts/test-rentang.js",
     "test:id-sumber": "node scripts/test-id-sumber.js",
+    "test:import-lewati": "node scripts/test-import-lewati.js",
+    "test:sumber-cadangan": "node scripts/test-sumber-cadangan.js",
     "stop": "node scripts/stop.js",
     "precheck": "node scripts/preflight.js"
   },

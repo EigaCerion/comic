@@ -2,7 +2,7 @@ import { Router } from 'express';
 import asyncHandler from '../utils/asyncHandler.js';
 import auditService from '../services/auditService.js';
 import resyncAllService from '../services/resyncAllService.js';
-import { supervisorStatus } from '../jobs/supervisorPool.js';
+import { supervisorStatus } from '../jobs/pengawas/index.js';
 
 const router = Router();
 

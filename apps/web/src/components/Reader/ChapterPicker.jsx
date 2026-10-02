@@ -41,31 +41,31 @@ const Baris = ({ chapter, aktif, atas, onPilih }) => {
         aria-current={aktif ? 'true' : undefined}
         className={`flex h-[60px] w-full items-center gap-3 rounded-xl border px-3 text-left transition-colors ${
           aktif
-            ? 'border-naruto bg-naruto/10'
-            : 'border-transparent hover:border-night-line hover:bg-night-soft'
+            ? 'border-primary bg-primary/10'
+            : 'border-transparent hover:border-line hover:bg-surface-soft'
         } ${terkunci ? 'cursor-not-allowed opacity-40' : ''}`}
       >
         <span
           className={`flex h-9 w-11 flex-none items-center justify-center rounded-lg font-mono text-sm font-bold ${
-            aktif ? 'bg-naruto text-night' : 'bg-night-soft text-paper/80'
+            aktif ? 'bg-primary text-primary-on' : 'bg-surface-soft text-txt-2'
           }`}
         >
           {formatChapterNumber(chapter.number)}
         </span>
 
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold text-paper">
+          <span className="block truncate text-sm font-semibold text-txt">
             {chapter.title || `Chapter ${formatChapterNumber(chapter.number)}`}
           </span>
-          <span className="block truncate text-[11px] text-paper/45">
+          <span className="block truncate text-[11px] text-txt-2">
             {terkunci ? 'Belum diunduh' : `${chapter.totalPages} halaman`}
             {chapter.readAt ? ` · ${formatRelativeTime(chapter.readAt)}` : ''}
           </span>
         </span>
 
         <span className="flex-none text-xs">
-          {tamat && <span className="text-leaf-light">✓</span>}
-          {!tamat && persen > 0 && <span className="font-mono text-paper/50">{persen}%</span>}
+          {tamat && <span className="text-success">✓</span>}
+          {!tamat && persen > 0 && <span className="font-mono text-txt-2">{persen}%</span>}
         </span>
       </button>
     </li>
@@ -240,25 +240,25 @@ export const ChapterPicker = ({ comicId, chapterAktifId, daftarLokal, onPilih, o
         aria-modal="true"
         aria-label="Pilih chapter"
         onClick={(event) => event.stopPropagation()}
-        className="flex h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-night-line bg-night-card text-paper shadow-scroll animate-slide-up sm:h-[78dvh] sm:rounded-2xl"
+        className="flex h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-line bg-surface text-txt shadow-scroll animate-slide-up sm:h-[78dvh] sm:rounded-2xl"
       >
-        <div className="flex items-center gap-2 border-b border-night-line px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-line px-4 py-3">
           <h2 className="flex-1 text-sm font-bold">
             Pilih chapter
             {semua.length > 0 && (
-              <span className="ml-2 font-normal text-paper/40">{semua.length} total</span>
+              <span className="ml-2 font-normal text-txt-2">{semua.length} total</span>
             )}
           </h2>
           <button
             type="button"
-            className="rounded-lg px-2 py-1 text-xs text-paper/60 hover:bg-night-soft hover:text-paper"
+            className="rounded-lg px-2 py-1 text-xs text-txt-2 hover:bg-surface-soft hover:text-txt"
             onClick={() => setUrutTerbaru((nilai) => !nilai)}
           >
             {urutTerbaru ? 'Terbaru ↓' : 'Terlama ↑'}
           </button>
           <button
             type="button"
-            className="rounded-lg px-2 py-1 text-paper/50 hover:bg-night-soft hover:text-paper"
+            className="rounded-lg px-2 py-1 text-txt-2 hover:bg-surface-soft hover:text-txt"
             onClick={onClose}
             aria-label="Tutup"
           >
@@ -266,10 +266,10 @@ export const ChapterPicker = ({ comicId, chapterAktifId, daftarLokal, onPilih, o
           </button>
         </div>
 
-        <form onSubmit={saatSubmit} className="border-b border-night-line px-4 py-3">
+        <form onSubmit={saatSubmit} className="border-b border-line px-4 py-3">
           <input
             ref={inputRef}
-            className="input border-night-line bg-night-soft/80 text-paper placeholder:text-paper/30"
+            className="input"
             placeholder="Cari nomor atau judul chapter…"
             value={kueri}
             onChange={(event) => gantiKueri(event.target.value)}
@@ -280,14 +280,14 @@ export const ChapterPicker = ({ comicId, chapterAktifId, daftarLokal, onPilih, o
 
           {indeksSekarang >= 0 && !cari && (
             <div className="mt-3 flex items-center gap-2">
-              <span className="label-mikro flex-none text-paper/40">Lompat</span>
+              <span className="label-mikro flex-none">Lompat</span>
               {LOMPATAN.map((delta) => (
                 <button
                   key={delta}
                   type="button"
                   disabled={!tujuanLompat(delta)}
                   onClick={() => lompat(delta)}
-                  className="flex-1 rounded-lg border border-night-line px-2 py-1 font-mono text-xs text-paper/80 transition-colors hover:border-naruto hover:text-naruto disabled:cursor-not-allowed disabled:opacity-30"
+                  className="flex-1 rounded-lg border border-line px-2 py-1 font-mono text-xs text-txt-2 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   {delta > 0 ? `+${delta}` : delta}
                 </button>
@@ -298,7 +298,7 @@ export const ChapterPicker = ({ comicId, chapterAktifId, daftarLokal, onPilih, o
 
         <div ref={kotakRef} onScroll={saatScroll} className="relative flex-1 overflow-y-auto py-2">
           {memuatKosong && (
-            <p className="py-10 text-center text-sm text-paper/50">Memuat daftar chapter…</p>
+            <p className="py-10 text-center text-sm text-txt-2">Memuat daftar chapter…</p>
           )}
 
           {gagalKosong && (
@@ -306,7 +306,7 @@ export const ChapterPicker = ({ comicId, chapterAktifId, daftarLokal, onPilih, o
               <p className="text-sm text-danger">Gagal memuat daftar chapter</p>
               <button
                 type="button"
-                className="btn-ghost mt-3 border-night-line text-xs text-paper"
+                className="btn-ghost mt-3 text-xs"
                 onClick={refetch}
               >
                 Coba lagi
@@ -315,7 +315,7 @@ export const ChapterPicker = ({ comicId, chapterAktifId, daftarLokal, onPilih, o
           )}
 
           {!memuatKosong && !gagalKosong && tersaring.length === 0 && (
-            <p className="py-10 text-center text-sm text-paper/50">
+            <p className="py-10 text-center text-sm text-txt-2">
               {cari ? `Tidak ada chapter yang cocok dengan "${kueri}"` : 'Belum ada chapter.'}
             </p>
           )}

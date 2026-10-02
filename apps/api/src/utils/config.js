@@ -115,11 +115,17 @@ export const config = {
    * yang bisa diklik untuk mencari tahu. Daftar ini sempat ketinggalan dua
    * host — komikindo.ch dan kiryuu.to sudah punya blok katalog dan sudah ada di
    * .env.example, tapi tidak di sini — sehingga siapa pun yang menjalankan
-   * server tanpa berkas .env hanya melihat dua dari empat sumber dan tidak
-   * punya cara menebak kenapa.
+   * server tanpa berkas .env hanya melihat sebagian sumber dan tidak punya cara
+   * menebak kenapa.
+   *
+   * Perhatikan bentuk kiryuu: yang didaftarkan v7.kiryuu.to, BUKAN kiryuu.to.
+   * Pencocokannya `host === domain || host.endsWith('.' + domain)`, jadi
+   * mendaftarkan subdomain TIDAK mengizinkan domain induknya. Itu kebalikan
+   * dari pencocokan selector di packages/sumber, yang justru naik ke domain
+   * induk — dan kedua aturan itu harus dipenuhi bersamaan.
    */
   allowedSourceDomains: (process.env.ALLOWED_SOURCE_DOMAINS ??
-    'komiku.org,komikpedia.net,webtoons.com,siikomik.net,ngomik.cc,komikindo.ch,kiryuu.to')
+    'komiku.org,komikpedia.net,webtoons.com,ngomik.cc,komikindo.ch,v7.kiryuu.to')
     .split(',')
     .map((d) => d.trim().toLowerCase())
     .filter(Boolean),

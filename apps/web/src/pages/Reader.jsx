@@ -341,8 +341,8 @@ export const Reader = () => {
         {/* Garis tipis saat chapter berganti: perpindahan terasa direspons,
             bukan diam sambil menampilkan isi lama. */}
         {isFetching && (
-          <div className="h-0.5 w-full overflow-hidden bg-night-line">
-            <div className="h-full w-1/3 animate-[slide-up_1s_ease-in-out_infinite] bg-naruto" />
+          <div className="h-0.5 w-full overflow-hidden bg-surface-soft">
+            <div className="h-full w-1/3 animate-[slide-up_1s_ease-in-out_infinite] bg-primary" />
           </div>
         )}
 
@@ -352,7 +352,7 @@ export const Reader = () => {
           style={{ filter: `brightness(${brightness}%) contrast(${contrast}%)` }}
         >
           {totalPages === 0 ? (
-            <p className="py-20 text-center text-sm text-paper/60">
+            <p className="py-20 text-center text-sm text-txt-2">
               Chapter ini belum punya halaman tersimpan.
             </p>
           ) : (

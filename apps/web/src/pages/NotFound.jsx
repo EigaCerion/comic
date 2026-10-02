@@ -6,7 +6,7 @@ export const NotFound = () => (
       🌀
     </span>
     <h1 className="text-2xl font-black">Halaman ini menghilang dalam jutsu</h1>
-    <p className="max-w-md text-sm text-night/60 dark:text-paper/60">
+    <p className="max-w-md text-sm text-txt-2">
       Rute yang kamu buka tidak ada. Kembali ke beranda dan lanjutkan membaca.
     </p>
     <Link to="/" className="btn-primary">

@@ -26,7 +26,7 @@ const Card = ({ title, icon, children }) => (
 );
 
 const Row = ({ label, value }) => (
-  <div className="flex items-center justify-between border-b border-paper-line py-2 text-sm last:border-0 dark:border-night-line">
+  <div className="flex items-center justify-between border-b border-line py-2 text-sm last:border-0">
     <span className="opacity-60">{label}</span>
     <span className="font-mono font-semibold">{value}</span>
   </div>
@@ -35,14 +35,14 @@ const Row = ({ label, value }) => (
 const Choice = ({ label, value, options, onChange }) => (
   <div className="mb-4">
     <p className="mb-1 text-xs font-semibold uppercase tracking-wide opacity-60">{label}</p>
-    <div className="flex overflow-hidden rounded-lg border border-paper-line dark:border-night-line">
+    <div className="flex overflow-hidden rounded-lg border border-line">
       {options.map((option) => (
         <button
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
           className={`flex-1 px-3 py-1.5 text-xs font-semibold transition ${
-            value === option.value ? 'bg-leaf text-paper' : 'hover:bg-paper dark:hover:bg-night-soft'
+            value === option.value ? 'bg-primary text-primary-on' : 'hover:bg-surface-soft'
           }`}
         >
           {option.label}
@@ -95,10 +95,10 @@ const StatusServerCard = () => {
   const berjalanDetik = mulai ? (Date.now() - mulai.getTime()) / 1000 : null;
 
   const nada = mati
-    ? { titik: 'bg-rose-500', teks: 'text-rose-500', label: 'Tidak menjawab' }
+    ? { titik: 'bg-danger', teks: 'text-danger', label: 'Tidak menjawab' }
     : belumTahu
-      ? { titik: 'bg-night/30 dark:bg-paper/30', teks: 'opacity-60', label: 'Memeriksa…' }
-      : { titik: 'bg-emerald-500', teks: 'text-emerald-500', label: 'Hidup' };
+      ? { titik: 'bg-txt-2/40', teks: 'opacity-60', label: 'Memeriksa…' }
+      : { titik: 'bg-success', teks: 'text-success', label: 'Hidup' };
 
   return (
     <Card title="Status server" icon="🩺">
@@ -135,7 +135,7 @@ const StatusServerCard = () => {
       )}
 
       {pernahRestart && !mati && (
-        <p className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
+        <p className="mt-3 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
           Server sempat mati dan hidup lagi sejak halaman ini dibuka. Kalau ini terjadi berulang,
           unduhan yang sedang berjalan ikut terputus tiap kali.
         </p>
@@ -165,7 +165,7 @@ const ConnectCard = () => {
           <ul className="mt-3 space-y-2.5">
             {data.nama && (
               <li>
-                <p className="font-mono text-xs font-semibold text-naruto">{data.nama}</p>
+                <p className="font-mono text-xs font-semibold text-primary">{data.nama}</p>
                 <p className="label-mikro mt-0.5">Nama tetap · berlaku di jaringan mana pun</p>
               </li>
             )}
@@ -217,7 +217,7 @@ export const Settings = () => {
   return (
     <div>
       <h1 className="text-2xl font-black">Pengaturan</h1>
-      <p className="mt-1 text-sm text-night/50 dark:text-paper/50">
+      <p className="mt-1 text-sm text-txt-2">
         Preferensi tampilan disimpan di browser; angka storage dibaca langsung dari folder data.
       </p>
 

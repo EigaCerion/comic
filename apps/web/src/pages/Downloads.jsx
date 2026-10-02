@@ -7,6 +7,7 @@ import {
   useDismissFindingMutation,
   useRepairAuditMutation,
   useClearQueueMutation,
+  useCancelPendingDownloadsMutation,
   useGetDownloadsQuery,
   useGetResyncAllQuery,
   useStartResyncAllMutation,
@@ -20,11 +21,11 @@ import { showToast } from '../store/slices/uiSlice.js';
 import { formatChapterNumber, formatRelativeTime, jobStatusLabel } from '../utils/format.js';
 
 const STATUS_STYLE = {
-  pending: 'text-night/60 dark:text-paper/60',
-  downloading: 'text-naruto',
-  completed: 'text-leaf-light',
+  pending: 'text-txt-2',
+  downloading: 'text-primary',
+  completed: 'text-success',
   failed: 'text-danger',
-  paused: 'text-shinobi',
+  paused: 'text-accent',
 };
 
 const KIND_LABEL = {
@@ -39,9 +40,9 @@ const KIND_LABEL = {
 
 /** Ringkasan kerja bot pengawas beserta temuannya. */
 const LABEL_HASIL = {
-  'ada-baru': { ikon: '🆕', kelas: 'text-naruto' },
-  terkini: { ikon: '✓', kelas: 'text-night/45 dark:text-paper/45' },
-  'tanpa-sumber': { ikon: '?', kelas: 'text-night/60 dark:text-paper/60' },
+  'ada-baru': { ikon: '🆕', kelas: 'text-primary' },
+  terkini: { ikon: '✓', kelas: 'text-txt-2' },
+  'tanpa-sumber': { ikon: '?', kelas: 'text-txt-2' },
   gagal: { ikon: '!', kelas: 'text-danger' },
 };
 
@@ -111,7 +112,7 @@ const CekUpdateCard = () => {
           <h2 className="section-title">
             <span aria-hidden="true">🔄</span> Cek update semua komik
           </h2>
-          <p className="mt-1 text-xs text-night/55 dark:text-paper/55">
+          <p className="mt-1 text-xs text-txt-2">
             {berjalan
               ? `Mengecek ${data.diproses + 1} dari ${data.total}${perkiraan}${data.sekarang ? ` · ${data.sekarang}` : ''}`
               : data?.selesaiPada
@@ -148,7 +149,7 @@ const CekUpdateCard = () => {
               <Link to={`/comic/${item.slug}`} className="font-semibold hover:underline">
                 {item.title}
               </Link>
-              <span className="text-night/55 dark:text-paper/55">
+              <span className="text-txt-2">
                 {item.diantre} chapter baru diantre
                 {item.diSumber ? ` (sumber ${item.diSumber}, koleksi ${item.diKoleksi})` : ''}
               </span>
@@ -158,14 +159,14 @@ const CekUpdateCard = () => {
       )}
 
       {data?.perhatianLain > 0 && (
-        <p className="mt-2 text-xs text-night/45 dark:text-paper/45">
+        <p className="mt-2 text-xs text-txt-2">
           +{data.perhatianLain} komik lain punya pembaruan — semuanya sudah masuk antrian di bawah.
         </p>
       )}
 
       {bermasalah.length > 0 && (
         <details className="mt-3 text-xs">
-          <summary className="cursor-pointer text-night/55 dark:text-paper/55">
+          <summary className="cursor-pointer text-txt-2">
             {(ringkasan?.gagal ?? 0) + (ringkasan?.tanpaSumber ?? 0)} komik tidak bisa dicek
           </summary>
           <ul className="mt-2 space-y-1">
@@ -178,7 +179,7 @@ const CekUpdateCard = () => {
                   <Link to={`/comic/${item.slug}`} className="font-semibold hover:underline">
                     {item.title}
                   </Link>{' '}
-                  <span className="text-night/55 dark:text-paper/55">{item.pesan}</span>
+                  <span className="text-txt-2">{item.pesan}</span>
                 </span>
               </li>
             ))}
@@ -243,7 +244,7 @@ const SupervisorCard = () => {
       </div>
 
       {data.totalTerbuka === 0 ? (
-        <p className="mt-3 text-sm text-leaf-light">Semua chapter yang diperiksa lengkap.</p>
+        <p className="mt-3 text-sm text-success">Semua chapter yang diperiksa lengkap.</p>
       ) : (
         <>
           <div className="mt-3 flex flex-wrap gap-1.5">
@@ -257,14 +258,14 @@ const SupervisorCard = () => {
             {data.terakhir.slice(0, 5).map((temuan) => (
               <li key={temuan.id} className="flex items-center gap-2">
                 <span className="min-w-0 flex-1 truncate">
-                  <Link to={`/comic/${temuan.comic_slug}`} className="hover:text-naruto">
+                  <Link to={`/comic/${temuan.comic_slug}`} className="hover:text-primary">
                     {temuan.comic_title}
                   </Link>{' '}
                   · ch {temuan.chapter_number} · {temuan.detail}
                 </span>
                 <Link
                   to={`/comic/${temuan.comic_slug}`}
-                  className="flex-none text-naruto hover:underline"
+                  className="flex-none text-primary hover:underline"
                   title="Buka komiknya untuk menambal lewat URL manual"
                 >
                   isi manual
@@ -294,9 +295,14 @@ export const Downloads = () => {
   const [pause] = usePauseQueueMutation();
   const [resume] = useResumeQueueMutation();
   const [clear] = useClearQueueMutation();
+  const [batalkanMenunggu] = useCancelPendingDownloadsMutation();
 
   const items = query.data?.items ?? [];
   const counts = query.data?.counts ?? {};
+  // Yang sedang berjalan sengaja TIDAK dihitung: pembatalan massal memang tidak
+  // menyentuhnya (pekerjanya masih memegang berkas chapter itu), jadi angka di
+  // tombol harus sama persis dengan yang benar-benar akan hilang.
+  const menunggu = (counts.pending ?? 0) + (counts.paused ?? 0);
 
   const act = async (action, args, message) => {
     try {
@@ -312,7 +318,7 @@ export const Downloads = () => {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black">Manajer Unduhan</h1>
-          <p className="text-sm text-night/50 dark:text-paper/50">
+          <p className="text-sm text-txt-2">
             {Object.entries(counts)
               .map(([status, n]) => `${jobStatusLabel[status] ?? status}: ${n}`)
               .join(' · ') || 'Antrian kosong'}
@@ -328,6 +334,26 @@ export const Downloads = () => {
           <button type="button" className="btn-ghost" onClick={() => act(clear, undefined, 'Riwayat dibersihkan')}>
             🧹 Bersihkan selesai/gagal
           </button>
+          {/*
+            Dikonfirmasi lebih dulu, tidak seperti tiga tombol di sebelahnya:
+            jeda, lanjutkan, dan bersihkan-riwayat semuanya bisa dibatalkan
+            dengan satu tekanan lagi, sedangkan yang ini membuang pekerjaan yang
+            belum sempat dikerjakan dan tidak ada jalan kembalinya. Jumlahnya
+            disebut di pertanyaannya — "batalkan antrian" terbaca jauh lebih
+            ringan daripada "buang 88 chapter".
+          */}
+          {menunggu > 0 && (
+            <button
+              type="button"
+              className="btn-ghost text-danger"
+              onClick={() => {
+                if (!window.confirm(`Buang ${menunggu} chapter yang belum mulai dari antrian?`)) return;
+                act(batalkanMenunggu, null, 'Antrian yang belum mulai dibuang');
+              }}
+            >
+              ✕ Batalkan {menunggu} yang menunggu
+            </button>
+          )}
         </div>
       </div>
 
@@ -355,7 +381,7 @@ export const Downloads = () => {
                     terpotong habis — padahal justru itu yang dicari orang di halaman
                     unduhan. Mulai sm keduanya kembali menyatu dalam satu baris. */}
                 <p className="text-sm font-semibold sm:truncate">
-                  <Link to={`/comic/${job.comicSlug}`} className="block truncate hover:text-naruto sm:inline">
+                  <Link to={`/comic/${job.comicSlug}`} className="block truncate hover:text-primary sm:inline">
                     {job.comicTitle}
                   </Link>
                   <span className="block truncate opacity-60 sm:inline">

@@ -44,7 +44,7 @@ const Toast = () => {
         // aman-bawah-jarak: toast melayang dari tepi bawah layar, dan di HP
         // tepi itu ditempati bilah navigasi/gestur.
         'aman-bawah-jarak fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl px-4 py-2.5 text-sm font-medium shadow-scroll animate-slide-up',
-        toast.type === 'error' ? 'bg-danger text-white' : 'bg-leaf text-white',
+        toast.type === 'error' ? 'bg-danger text-white' : 'bg-success text-white',
       ].join(' ')}
     >
       {toast.message}
@@ -76,7 +76,7 @@ export const AppLayout = () => (
       </main>
       {/* Elemen terakhir dalam aliran halaman, jadi ia yang menyediakan ruang
           untuk bilah navigasi/gestur di HP (--aman-bawah, theme.css). */}
-      <footer className="gutter-app border-t border-paper-line pb-[calc(1rem_+_var(--aman-bawah))] pt-4 text-center text-xs text-night/40 dark:border-night-line dark:text-paper/40">
+      <footer className="gutter-app border-t border-line pb-[calc(1rem_+_var(--aman-bawah))] pt-4 text-center text-xs text-txt-2">
         NaruReader{VERSI ? ` v${VERSI}` : ''} — Phase 1 MVP · dibuat untuk koleksi lokal
       </footer>
     </div>

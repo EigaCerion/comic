@@ -157,6 +157,41 @@ CREATE TABLE IF NOT EXISTS audit_findings (
 
 CREATE INDEX IF NOT EXISTS idx_audit_status ON audit_findings(status, created_at DESC);
 
+-- Sumber cadangan per komik: alamat halaman seri yang sama di situs lain.
+--
+-- comics.source_url tetap menjadi sumber yang SEDANG dipakai — seluruh kode
+-- lama membacanya dan tidak perlu tahu tabel ini ada. Yang ditambahkan di sini
+-- adalah ingatan: situs mana saja yang pernah terbukti memuat komik ini, mana
+-- yang terakhir berhasil, dan mana yang sudah mati.
+--
+-- Alasannya satu kejadian yang berulang terus: situs sumber mati, lalu setiap
+-- "Cek chapter baru" untuk komik itu gagal selamanya sampai pemiliknya mencari
+-- sendiri komik yang sama di situs lain dan menempelkan tautannya. Dengan
+-- tabel ini, perpindahan itu terjadi sendiri ke sumber yang SUDAH pernah
+-- disetujui.
+--
+-- status: 'siap'  — sudah disetujui, boleh dipakai otomatis
+--         'calon' — hasil pencarian otomatis, menunggu persetujuan
+--         'mati'  — berkali-kali gagal; dilewati kecuali tidak ada yang lain
+CREATE TABLE IF NOT EXISTS comic_sources (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  comic_id INTEGER NOT NULL,
+  series_url TEXT NOT NULL,
+  host TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'siap',
+  kemiripan REAL,                -- 0..1, skor kecocokan judul saat ditemukan
+  chapter_terakhir REAL,         -- nomor chapter tertinggi saat terakhir dibaca
+  gagal_beruntun INTEGER DEFAULT 0,
+  last_error TEXT,
+  last_ok_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(comic_id) REFERENCES comics(id) ON DELETE CASCADE,
+  -- Satu alamat hanya boleh tercatat sekali per komik. Awalan comic_id-nya
+  -- sekaligus melayani "semua sumber komik ini", jadi tidak ada indeks
+  -- tambahan di sini — lihat INDEKS_DOBEL di db/index.js.
+  UNIQUE(comic_id, series_url)
+);
+
 -- ─────────────────────────────────────────────────────────────────────
 -- Akun & peran (Phase 2)
 -- ─────────────────────────────────────────────────────────────────────

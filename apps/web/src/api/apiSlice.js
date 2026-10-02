@@ -86,6 +86,7 @@ export const api = createApi({
     'ImportJobs',
     'Scout',
     'Audit',
+    'SumberKomik',
     'Auth',
     'Users',
     'Rating',
@@ -215,6 +216,16 @@ export const api = createApi({
       query: () => ({ url: '/downloads/clear', method: 'POST' }),
       invalidatesTags: ['Downloads'],
     }),
+    // Buang semua yang BELUM mulai. comicId opsional: tanpa itu seluruh
+    // antrian, dengan itu satu komik saja.
+    cancelPendingDownloads: builder.mutation({
+      query: (comicId = null) => ({
+        url: '/downloads/cancel-pending',
+        method: 'POST',
+        body: comicId ? { comic_id: comicId } : {},
+      }),
+      invalidatesTags: ['Downloads', 'Comics'],
+    }),
 
     // ── Upload manual (multipart, jangan set Content-Type manual) ────
     uploadComic: builder.mutation({
@@ -301,6 +312,39 @@ export const api = createApi({
 
     // ── Sambungkan perangkat ────────────────────────────────────────
     getConnect: builder.query({ query: () => '/connect' }),
+
+    // ── Sumber komik (alamat halaman seri di situs-situs sumber) ────
+    getSumberKomik: builder.query({
+      query: (comicId) => `/comics/${comicId}/sumber`,
+      providesTags: (_hasil, _galat, comicId) => [{ type: 'SumberKomik', id: comicId }],
+    }),
+    tambahSumberKomik: builder.mutation({
+      query: ({ comicId, seriesUrl }) => ({
+        url: `/comics/${comicId}/sumber`,
+        method: 'POST',
+        body: { series_url: seriesUrl },
+      }),
+      invalidatesTags: (_h, _g, { comicId }) => [{ type: 'SumberKomik', id: comicId }],
+    }),
+    cariSumberKomik: builder.mutation({
+      query: (comicId) => ({ url: `/comics/${comicId}/sumber/cari`, method: 'POST' }),
+      // Pencarian ikut MENCATAT kandidatnya sebagai calon, jadi daftarnya
+      // memang berubah — tanpa invalidasi ini, kandidat yang baru ditemukan
+      // tidak muncul sampai halamannya dimuat ulang.
+      invalidatesTags: (_h, _g, comicId) => [{ type: 'SumberKomik', id: comicId }],
+    }),
+    setujuiSumberKomik: builder.mutation({
+      query: ({ comicId, id, pakaiSekarang = false }) => ({
+        url: `/comics/${comicId}/sumber/${id}/setujui`,
+        method: 'POST',
+        body: { pakai_sekarang: pakaiSekarang },
+      }),
+      invalidatesTags: (_h, _g, { comicId }) => [{ type: 'SumberKomik', id: comicId }, 'Comic'],
+    }),
+    hapusSumberKomik: builder.mutation({
+      query: ({ comicId, id }) => ({ url: `/comics/${comicId}/sumber/${id}`, method: 'DELETE' }),
+      invalidatesTags: (_h, _g, { comicId }) => [{ type: 'SumberKomik', id: comicId }, 'Comic'],
+    }),
 
     // ── Pengawas (audit) ────────────────────────────────────────────
     getAudit: builder.query({
@@ -463,6 +507,12 @@ export const {
   usePauseQueueMutation,
   useResumeQueueMutation,
   useClearQueueMutation,
+  useCancelPendingDownloadsMutation,
+  useGetSumberKomikQuery,
+  useTambahSumberKomikMutation,
+  useCariSumberKomikMutation,
+  useSetujuiSumberKomikMutation,
+  useHapusSumberKomikMutation,
   useUploadComicMutation,
   useUploadChapterMutation,
   useGetImportConfigQuery,

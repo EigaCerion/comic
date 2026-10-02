@@ -420,9 +420,42 @@ const buangKartuYatim = () => {
     .run(batasUmurKartu(), ...aktif);
 };
 
-/** Host yang punya konfigurasi katalog DAN masih diizinkan allowlist. */
+/*
+ * Yang diuji ke allowlist adalah ALAMAT YANG BENAR-BENAR AKAN DIAMBIL, bukan
+ * alamat yang dikarang dari kunci tabel.
+ *
+ * Dulu baris ini berbunyi `sanitizeSourceUrl(`https://${host}/`)`, dan itu
+ * salah begitu sebuah situs pindah ke subdomain. Kiryuu membuktikannya: kunci
+ * tabelnya 'kiryuu.to' (sengaja, supaya ikut melayani v7, v8, dan seterusnya),
+ * katalognya menunjuk https://v7.kiryuu.to/, dan .env mengizinkan
+ * 'v7.kiryuu.to'. Pencocokan allowlist berjalan KE BAWAH
+ * (`host === domain || host.endsWith('.' + domain)`), jadi 'kiryuu.to' tidak
+ * cocok dengan 'v7.kiryuu.to' — dan kiryuu dibuang dari daftar pindai sebelum
+ * satu permintaan pun dibuat. Di layar: sumbernya hilang sama sekali dari panel
+ * Scout, tanpa kartu, tanpa galat, tanpa satu baris log.
+ *
+ * Dengan menguji URL-nya sendiri, kunci tabel bebas tetap memakai identitas
+ * situs sementara allowlist bicara soal host yang benar-benar dihubungi.
+ */
+const alamatDiizinkan = (urlPola) => {
+  if (!urlPola) return false;
+  // Pola cari memuat {q}. Diganti kata netral lebih dulu supaya yang diuji
+  // benar-benar sebuah URL, bukan teks yang kebetulan mirip.
+  return Boolean(sanitizeSourceUrl(String(urlPola).split('{q}').join('x')));
+};
+
+const polaHost = (host) => {
+  try {
+    return resolveSourceConfig(`https://${host}/`);
+  } catch {
+    // Host yang dimatikan melempar. Itu memang bukan host yang boleh dipindai.
+    return null;
+  }
+};
+
+/** Host yang punya konfigurasi katalog DAN alamat katalognya diizinkan allowlist. */
 export const hostTerpindai = () =>
-  daftarHostKatalog().filter((host) => sanitizeSourceUrl(`https://${host}/`));
+  daftarHostKatalog().filter((host) => alamatDiizinkan(polaHost(host)?.katalog?.url));
 
 const pindaiAman = async (host) => {
   try {
@@ -575,9 +608,9 @@ const MAKS_ENTRI_CACHE_CARI = 300;
 
 const cacheCari = new Map(); // "host|q" -> { pada, janji }
 
-/** Host yang punya blok cari DAN masih diizinkan allowlist. */
+/** Host yang punya blok cari DAN alamat pencariannya diizinkan allowlist. */
 export const hostTercari = () =>
-  daftarHostCari().filter((host) => sanitizeSourceUrl(`https://${host}/`));
+  daftarHostCari().filter((host) => alamatDiizinkan(polaHost(host)?.cari?.url));
 
 const rapikanKataCari = (q) => (typeof q === 'string' ? q.replace(/\s+/g, ' ').trim() : '');
 

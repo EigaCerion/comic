@@ -11,24 +11,35 @@ import { IS_APP } from '../platform/index.js';
 import RakBeranda from '../offline/RakBeranda.jsx';
 
 const Hero = ({ stats }) => (
-  <section className="relative overflow-hidden rounded-2xl border border-paper-line bg-gradient-to-br from-leaf via-leaf-dark to-night px-6 py-10 text-paper dark:border-night-line">
-    <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full border-8 border-naruto/30" aria-hidden="true" />
-    <div className="absolute -bottom-16 right-24 h-56 w-56 rounded-full border-8 border-paper/10" aria-hidden="true" />
+  /* Hijau Konoha diganti lavender aksi utama. Gradiennya sengaja pendek — dua
+     nada yang berdekatan, bukan sapuan lintas warna — karena spesifikasinya
+     menahan gradient dan karena blok ini duduk tepat di atas deretan sampul
+     komik yang justru harus jadi satu-satunya hal berwarna kuat di layar.
+
+     Seluruh tulisan dan garis hiasnya memakai token `primary-on`, bukan `paper`:
+     lavender tema terang menuntut tinta putih, lavender tema gelap menuntut
+     tinta gelap, dan `paper` hanya benar untuk salah satunya. */
+  <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-primary-hover px-6 py-10 text-primary-on">
+    <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full border-8 border-primary-on/20" aria-hidden="true" />
+    <div className="absolute -bottom-16 right-24 h-56 w-56 rounded-full border-8 border-primary-on/10" aria-hidden="true" />
 
     <div className="relative max-w-2xl">
-      <p className="text-xs font-bold uppercase tracking-[0.3em] text-naruto">Hidden Leaf Library</p>
+      <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary-on/70">Hidden Leaf Library</p>
       <h1 className="mt-2 text-3xl font-black leading-tight sm:text-4xl">
         Koleksi komikmu, tersimpan lokal dan siap dibaca.
       </h1>
-      <p className="mt-3 max-w-xl text-sm text-paper/80">
+      <p className="mt-3 max-w-xl text-sm text-primary-on/80">
         Semua halaman dikompresi ke WebP kualitas HD, jadi ribuan chapter tetap ringan di disk. Tanpa
         akun, tanpa tracking.
       </p>
       <div className="mt-5 flex flex-wrap gap-2">
-        <Link to="/browse" className="btn-accent">
+        {/* Tombol utama di dalam blok lavender tidak boleh ikut lavender — ia
+            akan lenyap. Dibalik: permukaan terang di atas warna, cara yang sama
+            dipakai tombol ajakan di hampir semua hero. */}
+        <Link to="/browse" className="btn bg-surface text-txt hover:bg-surface-soft">
           Jelajahi koleksi
         </Link>
-        <Link to="/upload" className="btn-ghost border-paper/30 text-paper hover:bg-paper/10">
+        <Link to="/upload" className="btn border border-primary-on/30 text-primary-on hover:bg-primary-on/10">
           Upload manual
         </Link>
       </div>
@@ -42,7 +53,7 @@ const Hero = ({ stats }) => (
             { label: 'Storage', value: formatBytes(stats.storage.totalBytes) },
           ].map((item) => (
             <div key={item.label}>
-              <dt className="text-[11px] uppercase tracking-wider text-paper/60">{item.label}</dt>
+              <dt className="text-[11px] uppercase tracking-wider text-primary-on/60">{item.label}</dt>
               <dd className="text-xl font-bold">{item.value}</dd>
             </div>
           ))}
@@ -125,7 +136,7 @@ export const Home = () => {
           title="Favorit"
           icon="⭐"
           action={
-            <Link to="/browse?favorite=true" className="text-xs font-semibold text-naruto hover:underline">
+            <Link to="/browse?favorite=true" className="text-xs font-semibold text-primary hover:underline">
               Lihat semua
             </Link>
           }
@@ -143,7 +154,7 @@ export const Home = () => {
           title="Baru diperbarui"
           icon="🍃"
           action={
-            <Link to="/browse" className="text-xs font-semibold text-naruto hover:underline">
+            <Link to="/browse" className="text-xs font-semibold text-primary hover:underline">
               Jelajahi
             </Link>
           }

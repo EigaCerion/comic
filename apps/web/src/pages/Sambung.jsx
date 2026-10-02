@@ -114,7 +114,7 @@ export const Sambung = () => {
     <div className="app-bg flex min-h-full flex-col justify-center px-4 py-10">
       <div className="mx-auto w-full max-w-md">
         <div className="mb-6 text-center">
-          <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-naruto text-2xl font-black text-night shadow-glow">
+          <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-2xl font-black text-primary-on shadow-glow">
             忍
           </span>
           <h1 className="text-2xl font-black">Mulai dari mana?</h1>

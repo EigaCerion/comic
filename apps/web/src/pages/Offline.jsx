@@ -73,7 +73,7 @@ const KartuUnduhan = () => {
       {/* Antrean yang tertahan bukan kegagalan: chapternya masih di sana dan
           lanjut sendiri. Yang perlu diketahui orangnya hanyalah kenapa diam. */}
       {unduhan.tertahan && (
-        <p className="mt-4 rounded-xl bg-shinobi/10 px-3 py-2 text-xs text-shinobi" role="status">
+        <p className="mt-4 rounded-xl bg-accent/10 px-3 py-2 text-xs text-accent" role="status">
           Menunggu server rumah terjangkau lagi — antrean lanjut sendiri begitu tersambung. (
           {unduhan.tertahan.pesan})
         </p>
@@ -184,7 +184,7 @@ export const Offline = () => {
                   <li key={entri.id} className="flex items-center gap-2">
                     <Link
                       to={`/read/${entri.id}`}
-                      className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-1 hover:bg-night-soft"
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-1 hover:bg-surface-soft"
                     >
                       <span className="flex-none font-mono text-xs opacity-60">
                         Ch {formatChapterNumber(entri.nomor)}

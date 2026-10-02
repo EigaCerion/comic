@@ -12,7 +12,8 @@
   },
   "files": [
     "index.js",
-    "selectors.js"
+    "selectors.js",
+    "situs"
   ],
   "dependencies": {
     "cheerio": "^1.2.0"

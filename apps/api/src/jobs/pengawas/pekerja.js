@@ -1,7 +1,8 @@
-import { getDb } from '../db/index.js';
-import config from '../utils/config.js';
-import { createLogger } from '../utils/logger.js';
-import { auditComic, repairFindings } from '../services/auditService.js';
+import { getDb } from '../../db/index.js';
+import config from '../../utils/config.js';
+import { createLogger } from '../../utils/logger.js';
+import { auditComic } from '../../services/pengawas/periksaKomik.js';
+import { repairFindings } from '../../services/pengawas/perbaiki.js';
 
 const log = createLogger('naruread:pengawas');
 

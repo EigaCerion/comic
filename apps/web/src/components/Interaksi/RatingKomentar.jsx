@@ -20,7 +20,7 @@ const Bintang = ({ terisi, ...props }) => (
   <button
     type="button"
     className={`text-2xl leading-none transition-transform hover:scale-110 disabled:hover:scale-100 ${
-      terisi ? 'text-naruto' : 'text-night/20 dark:text-paper/20'
+      terisi ? 'text-accent' : 'text-txt-2/30'
     }`}
     {...props}
   >
@@ -78,9 +78,9 @@ const KartuRating = ({ comicId }) => {
           {[5, 4, 3, 2, 1].map((n) => (
             <div key={n} className="flex items-center gap-2">
               <span className="w-3 text-[11px] opacity-50">{n}</span>
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-night/10 dark:bg-paper/10">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-soft">
                 <div
-                  className="h-full rounded-full bg-naruto/70"
+                  className="h-full rounded-full bg-accent"
                   style={{ width: `${(data.sebaran[n] / maks) * 100}%` }}
                 />
               </div>
@@ -90,7 +90,7 @@ const KartuRating = ({ comicId }) => {
         </div>
       </div>
 
-      <div className="mt-4 border-t border-paper-line pt-4 dark:border-night-line">
+      <div className="mt-4 border-t border-line pt-4">
         {sudahMasuk ? (
           <>
             <p className="label-mikro mb-2">
@@ -110,7 +110,7 @@ const KartuRating = ({ comicId }) => {
           </>
         ) : (
           <p className="text-sm opacity-60">
-            <Link to="/login" className="font-semibold text-naruto hover:underline">
+            <Link to="/login" className="font-semibold text-primary hover:underline">
               Masuk
             </Link>{' '}
             untuk memberi rating. Membaca tetap bebas tanpa akun.
@@ -136,7 +136,7 @@ const Komentar = ({ komentar, comicId }) => {
   };
 
   return (
-    <li className={`border-b border-paper-line py-3 last:border-0 dark:border-night-line ${komentar.isHidden ? 'opacity-60' : ''}`}>
+    <li className={`border-b border-line py-3 last:border-0 ${komentar.isHidden ? 'opacity-60' : ''}`}>
       <div className="flex flex-wrap items-baseline gap-x-2">
         <span className="text-sm font-bold">{komentar.penulis.displayName}</span>
         {komentar.penulis.role !== 'reader' && (
@@ -155,7 +155,7 @@ const Komentar = ({ komentar, comicId }) => {
           {komentar.bolehSembunyikan && (
             <button
               type="button"
-              className="text-[11px] font-semibold opacity-60 hover:text-naruto hover:opacity-100"
+              className="text-[11px] font-semibold opacity-60 hover:text-primary hover:opacity-100"
               onClick={() =>
                 jalankan(
                   () => sembunyikan({ id: komentar.id, comicId, sembunyikan: !komentar.isHidden }),
@@ -232,7 +232,7 @@ const KartuKomentar = ({ comicId }) => {
         </form>
       ) : (
         <p className="text-sm opacity-60">
-          <Link to="/login" className="font-semibold text-naruto hover:underline">
+          <Link to="/login" className="font-semibold text-primary hover:underline">
             Masuk
           </Link>{' '}
           untuk ikut berkomentar.

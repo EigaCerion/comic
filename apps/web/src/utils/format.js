@@ -59,11 +59,14 @@ export const formatDurasi = (detik) => {
 export const statusColor = (status) => {
   switch ((status ?? '').toLowerCase()) {
     case 'completed':
-      return 'text-shinobi border-shinobi/40';
+      return 'text-success border-success/40';
+    // Hiatus BUKAN galat — dulu ia merah, sewarna dengan "gagal memuat" dan
+    // "hapus komik". Warning: ia memang kabar yang perlu dilihat, tapi tidak ada
+    // yang rusak.
     case 'hiatus':
-      return 'text-danger border-danger/40';
+      return 'text-warning border-warning/40';
     default:
-      return 'text-leaf-light border-leaf/40';
+      return 'text-primary border-primary/40';
   }
 };
 

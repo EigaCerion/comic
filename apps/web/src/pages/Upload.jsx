@@ -252,11 +252,11 @@ export const Upload = () => {
   return (
     <div>
       <h1 className="text-2xl font-black">Upload Manual</h1>
-      <p className="mt-1 text-sm text-night/50 dark:text-paper/50">
+      <p className="mt-1 text-sm text-txt-2">
         Tambahkan komik dari file lokal. Gambar dikompresi di server sebelum disimpan.
       </p>
 
-      <div className="mt-5 flex overflow-hidden rounded-lg border border-paper-line dark:border-night-line">
+      <div className="mt-5 flex overflow-hidden rounded-lg border border-line">
         {[
           { value: 'comic', label: '📗 Komik baru' },
           { value: 'chapter', label: '📄 Chapter baru' },
@@ -266,7 +266,7 @@ export const Upload = () => {
             type="button"
             onClick={() => setTab(option.value)}
             className={`flex-1 px-4 py-2 text-sm font-semibold transition ${
-              tab === option.value ? 'bg-leaf text-paper' : 'hover:bg-paper dark:hover:bg-night-soft'
+              tab === option.value ? 'bg-primary text-primary-on' : 'hover:bg-surface-soft'
             }`}
           >
             {option.label}

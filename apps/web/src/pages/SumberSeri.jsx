@@ -69,12 +69,12 @@ const BarisChapter = ({ chapter, aksi = null, bisaDipilih = false, dipilih = fal
     </>
   );
 
-  const kelas = 'flex min-w-0 items-center gap-3 border-b border-paper-line px-3 py-2 last:border-b-0 dark:border-night-line';
+  const kelas = 'flex min-w-0 items-center gap-3 border-b border-line px-3 py-2 last:border-b-0';
 
   if (!bisaDipilih) return <li className={kelas}>{isi}</li>;
 
   return (
-    <li className={dipilih ? `${kelas} bg-naruto/[0.07]` : kelas}>
+    <li className={dipilih ? `${kelas} bg-primary/[0.07]` : kelas}>
       <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
         <input
           type="checkbox"
@@ -363,7 +363,7 @@ export const SumberSeri = () => {
 
   return (
     <div className="space-y-5">
-      <Link to="/sumber" className="text-xs text-night/60 hover:text-naruto dark:text-paper/60">
+      <Link to="/sumber" className="text-xs text-txt-2 hover:text-primary">
         ← Situs Sumber
       </Link>
 
@@ -375,8 +375,8 @@ export const SumberSeri = () => {
           {/* Pesannya sudah memuat status HTTP-nya kalau ada (lihat GalatSumber
               di sumber/ambil.js), dan itu yang membedakan "situs mati" dari
               "serinya sudah dihapus" — dua hal yang menuntut tindakan berbeda. */}
-          <p className="mt-2 break-words text-xs text-night/60 dark:text-paper/60">{galat}</p>
-          <p className="mt-2 break-all text-[11px] text-night/40 dark:text-paper/40">{alamat}</p>
+          <p className="mt-2 break-words text-xs text-txt-2">{galat}</p>
+          <p className="mt-2 break-all text-[11px] text-txt-2">{alamat}</p>
           <button type="button" className="btn-ghost mt-4" onClick={muat}>
             Coba lagi
           </button>
@@ -386,13 +386,13 @@ export const SumberSeri = () => {
       {seri && (
         <>
           <div className="card flex flex-col gap-4 p-4 sm:flex-row">
-            <div className="aspect-[2/3] w-32 flex-none overflow-hidden rounded-xl bg-paper-line dark:bg-night-line">
+            <div className="aspect-[2/3] w-32 flex-none overflow-hidden rounded-xl bg-surface-soft">
               <SampulSeri seri={seri} />
             </div>
 
             <div className="min-w-0 flex-1">
               <h1 className="text-lg font-black leading-snug">{seri.title}</h1>
-              <p className="mt-1 text-[11px] text-night/50 dark:text-paper/50">
+              <p className="mt-1 text-[11px] text-txt-2">
                 {[labelSumber(seri.source), seri.status, seri.author, seri.artist].filter(Boolean).join(' · ')}
               </p>
 
@@ -407,7 +407,7 @@ export const SumberSeri = () => {
               )}
 
               {seri.description && (
-                <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-night/70 dark:text-paper/70">
+                <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-txt-2">
                   {seri.description}
                 </p>
               )}
@@ -509,7 +509,7 @@ export const SumberSeri = () => {
                     saatToggle={() => toggle(chapter.url)}
                     aksi={
                       diHP.has(chapter.url) ? (
-                        <span className="text-[11px] font-semibold text-leaf" title="Sudah tersimpan di HP">
+                        <span className="text-[11px] font-semibold text-success" title="Sudah tersimpan di HP">
                           ✓ Di HP
                         </span>
                       ) : null

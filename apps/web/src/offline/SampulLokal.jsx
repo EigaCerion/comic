@@ -39,7 +39,7 @@ export const SampulLokal = ({ sampul, judul, className = 'aspect-[2/3] w-14 flex
   }, [sampul]);
 
   if (!url) {
-    return <div className={`${className} flex items-center justify-center bg-leaf/10 text-xl`}>🍥</div>;
+    return <div className={`${className} flex items-center justify-center bg-surface-soft text-xl`}>🍥</div>;
   }
 
   return <img src={url} alt={`Cover ${judul}`} className={`${className} object-cover`} />;

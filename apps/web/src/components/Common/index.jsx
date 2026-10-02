@@ -3,8 +3,8 @@ import { IS_APP } from '../../platform/index.js';
 import { PenjelasanGagal } from '../../offline/KabarLuring.jsx';
 
 export const Spinner = ({ label = 'Memuat…' }) => (
-  <div className="flex items-center justify-center gap-3 py-12 text-sm text-night/60 dark:text-paper/60">
-    <span className="h-5 w-5 animate-spin rounded-full border-2 border-naruto border-t-transparent" />
+  <div className="flex items-center justify-center gap-3 py-12 text-sm text-txt-2">
+    <span className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
     {label}
   </div>
 );
@@ -16,7 +16,7 @@ export const EmptyState = ({ icon = '🍃', title, description, action }) => (
     </span>
     <h3 className="text-base font-bold">{title}</h3>
     {description && (
-      <p className="max-w-md text-sm text-night/60 dark:text-paper/60">{description}</p>
+      <p className="max-w-md text-sm text-txt-2">{description}</p>
     )}
     {action}
   </div>
@@ -31,7 +31,7 @@ export const ErrorState = ({ error, onRetry }) => (
     {IS_APP ? (
       <PenjelasanGagal error={error} />
     ) : (
-      <p className="mt-2 text-xs text-night/60 dark:text-paper/60">
+      <p className="mt-2 text-xs text-txt-2">
         {error?.data?.error ?? error?.error ?? 'Pastikan API di http://localhost:3000 sudah jalan.'}
       </p>
     )}
@@ -44,9 +44,11 @@ export const ErrorState = ({ error, onRetry }) => (
 );
 
 export const ProgressBar = ({ value = 0, className = '' }) => (
-  <div className={`h-1.5 w-full overflow-hidden rounded-full bg-paper-line dark:bg-night-line ${className}`}>
+  <div className={`h-1.5 w-full overflow-hidden rounded-full bg-surface-soft ${className}`}>
+    {/* Kemajuan baca memakai Primary, sesuai spesifikasi: ia satu-satunya
+        indikator yang harus langsung terbaca sebagai "punyamu, sampai di sini". */}
     <div
-      className="h-full rounded-full bg-naruto transition-[width] duration-300"
+      className="h-full rounded-full bg-primary transition-[width] duration-300"
       style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
     />
   </div>

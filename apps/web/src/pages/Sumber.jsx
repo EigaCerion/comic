@@ -74,18 +74,18 @@ const KartuSumber = ({ item }) => {
     // cukup untuk melahirkan scroll horizontal di layar 375px.
     <article className="card flex min-w-0 flex-col overflow-hidden">
       <Link to={tautanSeri(item.seriesUrl)} className="block">
-        <div className="relative aspect-[2/3] overflow-hidden bg-paper-line dark:bg-night-line">
+        <div className="relative aspect-[2/3] overflow-hidden bg-surface-soft">
           <Sampul item={item} />
         </div>
       </Link>
 
       <div className="flex min-w-0 flex-1 flex-col gap-1 p-3">
         <h3 className="truncate text-sm font-bold leading-snug" title={item.title}>
-          <Link to={tautanSeri(item.seriesUrl)} className="hover:text-naruto">
+          <Link to={tautanSeri(item.seriesUrl)} className="hover:text-primary">
             {item.title}
           </Link>
         </h3>
-        <p className="truncate text-[11px] text-night/50 dark:text-paper/50">
+        <p className="truncate text-[11px] text-txt-2">
           {/* `item.host` ditempelkan pemanggil, dan itu satu-satunya sumber nama
               situs yang ada di sini: kartu dari panenKartu() sengaja tidak
               membawa host-nya sendiri — yang membawanya adalah pembungkus
@@ -104,7 +104,7 @@ const KartuSumber = ({ item }) => {
               ? 'Nomor chapter tidak terbaca'
               : `Chapter ${formatChapterNumber(nomor)}`}
         </p>
-        <p className="truncate text-[11px] text-night/40 dark:text-paper/40">
+        <p className="truncate text-[11px] text-txt-2">
           {item.updatedText ?? '—'}
         </p>
         <div className="mt-auto pt-2">
@@ -130,7 +130,7 @@ const Chip = ({ aktif, onClick, children }) => (
     onClick={onClick}
     aria-pressed={aktif}
     className={`chip px-3 py-1 ${
-      aktif ? 'border-naruto/50 bg-naruto/15 text-naruto' : 'hover:border-night/20 dark:hover:border-paper/20'
+      aktif ? 'border-primary/50 bg-primary/15 text-primary' : 'hover:border-primary/40'
     }`}
   >
     {children}
@@ -510,7 +510,7 @@ export const Sumber = () => {
           <h1 className="section-title">
             <span aria-hidden="true">🌐</span> Situs Sumber
           </h1>
-          <p className="text-xs text-night/50 dark:text-paper/50">
+          <p className="text-xs text-txt-2">
             Dibaca langsung dari situsnya oleh HP ini — server rumah tidak ikut campur.
             {pola && ` Pola v${pola.versi} (${pola.asal}).`}
           </p>
@@ -583,7 +583,7 @@ export const Sumber = () => {
       </form>
 
       {cari && (
-        <p className="break-words text-xs text-night/50 dark:text-paper/50">
+        <p className="break-words text-xs text-txt-2">
           Hasil untuk “{cari.kata}”
           {cari.tidakDidukung.length > 0 && (
             <>
@@ -621,7 +621,7 @@ export const Sumber = () => {
           "0 judul" dari situs yang sedang mati terbaca sama persis dengan
           situs yang memang tidak punya judul itu. */}
       {kabar.length > 0 && (
-        <ul className="space-y-1 break-words rounded-xl border border-danger/40 bg-danger/5 px-4 py-2 text-xs leading-relaxed text-night/70 dark:text-paper/70">
+        <ul className="space-y-1 break-words rounded-xl border border-danger/40 bg-danger/5 px-4 py-2 text-xs leading-relaxed text-txt-2">
           {kabar.map((satu) => (
             <BarisKabar key={`${satu.host}-${satu.jenis}`} {...satu} />
           ))}

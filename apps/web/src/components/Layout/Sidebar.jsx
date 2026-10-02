@@ -37,13 +37,14 @@ const linkClass = ({ isActive }) =>
     'relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
     'before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2',
     'before:rounded-full before:transition-all',
+    // Menu aktif memakai Primary dengan latar lembut, sesuai spesifikasi:
+    // warnanya saja yang menandai, bukan blok penuh yang bersaing dengan sampul
+    // komik di sebelahnya. Yang tidak aktif memakai Text Secondary dan baru
+    // naik ke Text Primary saat disentuh — jadi satu-satunya tulisan penuh di
+    // kolom ini adalah yang sedang dibuka.
     isActive
-      ? 'bg-naruto/10 text-naruto before:bg-naruto before:opacity-100'
-      : [
-          'text-night/70 hover:bg-night/[0.04] hover:text-night',
-          'dark:text-paper/65 dark:hover:bg-paper/[0.05] dark:hover:text-paper',
-          'before:opacity-0',
-        ].join(' '),
+      ? 'bg-primary/10 text-primary before:bg-primary before:opacity-100'
+      : 'text-txt-2 hover:bg-surface-soft hover:text-txt before:opacity-0',
   ].join(' ');
 
 export const Sidebar = () => {
@@ -86,15 +87,14 @@ export const Sidebar = () => {
 
       <aside
         className={[
-          'fixed inset-y-0 left-0 z-40 flex w-64 flex-col gap-6 border-r border-paper-line',
+          'fixed inset-y-0 left-0 z-40 flex w-64 flex-col gap-6 border-r border-line',
           // py-5 dipecah jadi dua dan dijumlahkan dengan zona aman perangkat
           // (theme.css). Drawer di HP `fixed inset-y-0`, jadi ia membentang dari
           // tepi ATAS layar sampai tepi bawah — tepat melewati status bar dan
           // bilah navigasi. Ditulis sebagai calc() di utilitas, bukan memakai
           // .aman-atas dari globals.css: utilitas Tailwind selalu menang atas
           // @layer components, jadi py-5 akan diam-diam membatalkannya.
-          'bg-paper-soft px-4 pb-[calc(1.25rem_+_var(--aman-bawah))] pt-[calc(1.25rem_+_var(--aman-atas))] transition-transform',
-          'dark:border-night-line dark:bg-night-soft',
+          'bg-surface px-4 pb-[calc(1.25rem_+_var(--aman-bawah))] pt-[calc(1.25rem_+_var(--aman-atas))] transition-transform',
           // Desktop: menempel di layar, bukan meregang setinggi halaman.
           //
           // `lg:static` dulu mengembalikan aside ke aliran flex, dan karena
@@ -123,7 +123,7 @@ export const Sidebar = () => {
         ].join(' ')}
       >
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-naruto text-lg font-black text-night shadow-glow">
+          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-lg font-black text-primary-on shadow-glow">
             忍
           </span>
           <div>
@@ -149,7 +149,7 @@ export const Sidebar = () => {
               <span aria-hidden="true">{item.icon}</span>
               <span className="flex-1">{item.label}</span>
               {item.badge === 'downloads' && activeJobs > 0 && (
-                <span className="rounded-full bg-naruto px-2 py-0.5 text-[11px] font-bold text-night">
+                <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-on">
                   {activeJobs}
                 </span>
               )}
@@ -158,7 +158,7 @@ export const Sidebar = () => {
         </nav>
 
         {sudahMasuk ? (
-          <div className="border-t border-paper-line pt-3 dark:border-night-line">
+          <div className="border-t border-line pt-3">
             <p className="truncate text-sm font-semibold">{user.displayName}</p>
             <p className="label-mikro mt-0.5">{user.role.replace('_', ' ')}</p>
             <button type="button" className="btn-ghost mt-2 w-full py-1 text-xs" onClick={() => logout()}>
@@ -166,8 +166,8 @@ export const Sidebar = () => {
             </button>
           </div>
         ) : (
-          <div className="border-t border-paper-line pt-3 dark:border-night-line">
-            <p className="text-[11px] leading-relaxed text-night/40 dark:text-paper/40">
+          <div className="border-t border-line pt-3">
+            <p className="text-[11px] leading-relaxed text-txt-2">
               Membaca bebas tanpa akun. Masuk untuk memberi rating dan berkomentar.
             </p>
             <NavLink to="/login" className="btn-accent mt-2 w-full py-1 text-xs">

@@ -47,13 +47,13 @@ export const Browse = () => {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black">{favorite ? 'Favorit' : 'Jelajahi'}</h1>
-          <p className="text-sm text-night/50 dark:text-paper/50">
+          <p className="text-sm text-txt-2">
             {pagination ? `${pagination.total} komik` : 'Memuat…'}
             {search && ` · hasil untuk “${search}”`}
           </p>
         </div>
 
-        <div className="flex overflow-hidden rounded-lg border border-paper-line dark:border-night-line">
+        <div className="flex overflow-hidden rounded-lg border border-line">
           {['grid', 'list'].map((mode) => (
             <button
               key={mode}
@@ -61,8 +61,8 @@ export const Browse = () => {
               onClick={() => dispatch(setViewMode(mode))}
               className={`px-3 py-1.5 text-xs font-semibold capitalize transition ${
                 viewMode === mode
-                  ? 'bg-leaf text-paper'
-                  : 'hover:bg-paper dark:hover:bg-night-soft'
+                  ? 'bg-primary text-primary-on'
+                  : 'hover:bg-surface-soft'
               }`}
             >
               {mode === 'grid' ? '▦ Grid' : '☰ List'}

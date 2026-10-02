@@ -63,7 +63,7 @@ export const PenjelasanGagal = ({ error }) => {
 
   if (terhubung || sedangMemeriksa) {
     return (
-      <p className="mt-2 text-xs text-night/60 dark:text-paper/60">
+      <p className="mt-2 text-xs text-txt-2">
         {error?.data?.error ?? 'Server menolak permintaan ini.'}
       </p>
     );
@@ -71,7 +71,7 @@ export const PenjelasanGagal = ({ error }) => {
 
   return (
     <>
-      <p className="mt-2 text-xs text-night/60 dark:text-paper/60">
+      <p className="mt-2 text-xs text-txt-2">
         Server rumah tidak terjangkau. Pastikan HP ada di Wi-Fi yang sama dan server menyala.
       </p>
       <Link to="/offline" className="btn-ghost mt-4">

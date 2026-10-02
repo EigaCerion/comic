@@ -26,9 +26,10 @@ export const TopBar = () => {
     setFocused(false);
   };
 
-  // Token permukaan disamakan dengan sidebar (night-soft). Sebelumnya header
-  // memakai `night` sementara sidebar `night-soft` — dua material berbeda yang
-  // bersentuhan tepat di x=256.
+  // Header dan sidebar sama-sama Surface. Dulu keduanya memakai token berbeda
+  // dan hasilnya dua material yang bersentuhan tepat di x=256 — garis jahitan
+  // yang terlihat jelas di layar lebar. Sekarang satu token untuk keduanya,
+  // jadi perbedaan seperti itu tidak bisa lahir lagi.
   //
   // `aman-atas` (globals.css) memberi jarak setinggi status bar. Dipasang di
   // header, BUKAN di <body>: header ini `sticky top-0`, dan elemen sticky
@@ -37,7 +38,7 @@ export const TopBar = () => {
   // Di header, paddingnya sekaligus membuat latar header menutupi jalur di
   // belakang status bar, bukan meninggalkan pita kosong.
   return (
-    <header className="aman-atas sticky top-0 z-20 border-b border-paper-line bg-paper-soft dark:border-night-line dark:bg-night-soft/95 lg:bg-paper-soft/80 lg:backdrop-blur-xl dark:lg:bg-night-soft/80">
+    <header className="aman-atas sticky top-0 z-20 border-b border-line bg-surface/95 lg:bg-surface/80 lg:backdrop-blur-xl">
       {/* gutter + max-w yang sama dengan <main> supaya tepi kiri kotak pencarian
           sejajar dengan tepi kiri konten, dan tetap sejajar di monitor lebar. */}
       <div className="gutter-app mx-auto flex h-16 w-full max-w-7xl items-center gap-3">
@@ -65,12 +66,12 @@ export const TopBar = () => {
           </span>
 
           {showSuggestions && (
-            <div className="absolute left-0 right-0 top-full mt-2 overflow-hidden rounded-xl border border-paper-line bg-paper-soft shadow-scroll animate-slide-up dark:border-night-line dark:bg-night-card">
+            <div className="absolute left-0 right-0 top-full mt-2 overflow-hidden rounded-xl border border-line bg-surface shadow-scroll animate-slide-up">
               {isFetching && suggestions.length === 0 && (
-                <p className="px-4 py-3 text-sm text-night/60 dark:text-paper/60">Mencari…</p>
+                <p className="px-4 py-3 text-sm text-txt-2">Mencari…</p>
               )}
               {!isFetching && suggestions.length === 0 && (
-                <p className="px-4 py-3 text-sm text-night/60 dark:text-paper/60">
+                <p className="px-4 py-3 text-sm text-txt-2">
                   Tidak ada hasil untuk “{query}”
                 </p>
               )}
@@ -78,7 +79,7 @@ export const TopBar = () => {
                 <Link
                   key={comic.id}
                   to={`/comic/${comic.slug}`}
-                  className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-paper dark:hover:bg-night-soft"
+                  className="flex items-center gap-3 px-3 py-2 text-sm transition-colors hover:bg-surface-soft"
                   onClick={() => setFocused(false)}
                 >
                   {comic.coverUrl ? (
@@ -89,13 +90,13 @@ export const TopBar = () => {
                       loading="lazy"
                     />
                   ) : (
-                    <span className="flex h-12 w-9 items-center justify-center rounded bg-paper-line dark:bg-night-line">
+                    <span className="flex h-12 w-9 items-center justify-center rounded bg-surface-soft">
                       📖
                     </span>
                   )}
                   <span className="flex-1">
                     <span className="block font-medium">{comic.title}</span>
-                    <span className="block text-xs text-night/50 dark:text-paper/50">
+                    <span className="block text-xs text-txt-2">
                       {comic.author ?? 'Tanpa author'} · {comic.totalChapters} chapter
                     </span>
                   </span>

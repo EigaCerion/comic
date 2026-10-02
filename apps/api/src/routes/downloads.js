@@ -37,6 +37,16 @@ router.post('/pause', asyncHandler(async (_req, res) => res.json(downloadService
 router.post('/resume', asyncHandler(async (_req, res) => res.json(downloadService.resumeQueue())));
 router.post('/clear', asyncHandler(async (_req, res) => res.json(downloadService.clearFinished())));
 
+// POST /api/downloads/cancel-pending — buang semua yang belum mulai.
+// comic_id opsional: tanpa itu seluruh antrian, dengan itu satu komik saja.
+router.post(
+  '/cancel-pending',
+  asyncHandler(async (req, res) => {
+    const comicId = req.body?.comic_id ?? req.body?.comicId;
+    res.json(downloadService.cancelPending({ comicId: comicId ? Number(comicId) : null }));
+  }),
+);
+
 // POST /api/downloads/:id/retry
 router.post(
   '/:id/retry',

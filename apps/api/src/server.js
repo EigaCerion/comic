@@ -4,8 +4,8 @@ import config from './utils/config.js';
 import { createLogger } from './utils/logger.js';
 import { closeDb } from './db/index.js';
 import createApp from './app.js';
-import { startWorker, stopWorker } from './jobs/downloadQueue.js';
-import { startSupervisors, stopSupervisors } from './jobs/supervisorPool.js';
+import { startWorker, stopWorker } from './jobs/importir/index.js';
+import { startSupervisors, stopSupervisors } from './jobs/pengawas/index.js';
 import { startMdns, stopMdns } from './services/connectService.js';
 
 const log = createLogger('naruread:server');

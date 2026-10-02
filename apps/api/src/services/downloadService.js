@@ -245,6 +245,31 @@ export const resumeQueue = () => {
   return { resumed: info.changes };
 };
 
+/**
+ * Buang SEMUA job yang belum mulai — seluruh antrian, atau satu komik saja.
+ *
+ * Ada karena satu kesalahan menghasilkan ratusan baris sekaligus: impor seri
+ * dari situs pengganti dulu mengantre seluruh chapter, termasuk yang berkasnya
+ * sudah lengkap, dan satu-satunya jalan keluar adalah menekan "Hentikan" di
+ * tiap baris — sembilan puluh kali. Penjaganya sekarang ada di importSeries,
+ * tapi antrian yang sudah telanjur panjang tetap harus bisa dikosongkan, dan
+ * alasan lain akan datang sendiri (salah pilih "Semua", komik salah).
+ *
+ * Yang berstatus 'downloading' TIDAK ikut, persis seperti cancelJob: pekerjanya
+ * sedang memegang berkas chapter itu, dan menghapus barisnya di tengah jalan
+ * meninggalkan folder separuh terisi yang tidak tercatat di mana pun.
+ * Hentikan dulu antriannya kalau yang berjalan juga ingin dibatalkan.
+ */
+export const cancelPending = ({ comicId = null } = {}) => {
+  const db = getDb();
+  const info = comicId
+    ? db
+        .prepare("DELETE FROM download_queue WHERE comic_id = ? AND status IN ('pending','paused')")
+        .run(Number(comicId))
+    : db.prepare("DELETE FROM download_queue WHERE status IN ('pending','paused')").run();
+  return { removed: info.changes };
+};
+
 export const clearFinished = () => {
   const info = getDb().prepare("DELETE FROM download_queue WHERE status IN ('completed','failed')").run();
   return { removed: info.changes };
@@ -306,6 +331,7 @@ export default {
   gantiChapter,
   retryJob,
   cancelJob,
+  cancelPending,
   pauseQueue,
   resumeQueue,
   clearFinished,

@@ -15,10 +15,10 @@ export const KartuServerApp = () => {
   const alamat = alamatServer();
 
   const nada = sedangMemeriksa
-    ? { titik: 'bg-night/30 dark:bg-paper/30', teks: 'opacity-60', label: 'Memeriksa…' }
+    ? { titik: 'bg-txt-2/40', teks: 'opacity-60', label: 'Memeriksa…' }
     : terhubung
-      ? { titik: 'bg-emerald-500', teks: 'text-emerald-500', label: 'Terhubung' }
-      : { titik: 'bg-rose-500', teks: 'text-rose-500', label: 'Tidak terjangkau' };
+      ? { titik: 'bg-success', teks: 'text-success', label: 'Terhubung' }
+      : { titik: 'bg-danger', teks: 'text-danger', label: 'Tidak terjangkau' };
 
   return (
     <section className="card p-5">

@@ -57,7 +57,7 @@ export const Login = () => {
   return (
     <div className="mx-auto max-w-md py-10">
       <div className="mb-6 text-center">
-        <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-naruto text-2xl font-black text-night shadow-glow">
+        <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-2xl font-black text-primary-on shadow-glow">
           忍
         </span>
         <h1 className="text-2xl font-black">
@@ -109,7 +109,7 @@ export const Login = () => {
           {mode === 'masuk' ? 'Belum punya akun?' : 'Sudah punya akun?'}{' '}
           <button
             type="button"
-            className="font-semibold text-naruto hover:underline"
+            className="font-semibold text-primary hover:underline"
             onClick={() => {
               setMode(mode === 'masuk' ? 'daftar' : 'masuk');
               setGalat(null);
@@ -121,7 +121,7 @@ export const Login = () => {
       </form>
 
       <p className="mt-4 text-center text-xs opacity-50">
-        <Link to="/" className="hover:text-naruto hover:underline">
+        <Link to="/" className="hover:text-primary hover:underline">
           Lanjut membaca tanpa akun
         </Link>
       </p>

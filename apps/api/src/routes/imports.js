@@ -110,6 +110,14 @@ router.post(
       comicId: body.comic_id ?? body.comicId,
       chapters: body.chapters,
       priority: body.priority,
+      /*
+       * Jalan keluar untuk satu-satunya kasus yang sah: berkas yang SUDAH ada
+       * memang ingin diganti — halaman gepeng dari impor lama, atau gambar yang
+       * raib bersama CDN situs sumbernya. Tanpa bendera ini, penjaga "sudah ada
+       * di koleksi" di importSeries tidak punya cara dilewati sama sekali, dan
+       * satu-satunya jalan tersisa adalah menghapus komiknya lebih dulu.
+       */
+      paksaUlang: body.paksa_ulang === true || body.paksaUlang === true,
     });
     res.status(202).json(result);
   }),

@@ -4,8 +4,8 @@
 // di API supaya tidak ada dua worker memproses antrian yang sama).
 import { createLogger } from './utils/logger.js';
 import { getDb, initSchema, closeDb } from './db/index.js';
-import { startWorker, stopWorker } from './jobs/downloadQueue.js';
-import { startSupervisors, stopSupervisors } from './jobs/supervisorPool.js';
+import { startWorker, stopWorker } from './jobs/importir/index.js';
+import { startSupervisors, stopSupervisors } from './jobs/pengawas/index.js';
 
 const log = createLogger('naruread:worker');
 

@@ -214,11 +214,19 @@ lebih cepat.
 
 ### 4.6 Ambil APK-nya dan beri nama yang benar
 
+**Jangan lewati langkah ini.** Gradle berhenti setelah menulis `app-release.apk`
+di folder keluarannya; nama berversinya dibuat di sini. Build yang sukses tapi
+tidak disalin terlihat persis seperti build yang gagal saat diverifikasi.
+
+Jalurnya absolut supaya berjalan dari folder mana pun — termasuk
+`apps\web\android`, tempat langkah 4.5 meninggalkan prompt Anda.
+
 ```powershell
-$versi = (Get-Content apps\web\package.json -Raw | ConvertFrom-Json).version
-New-Item -ItemType Directory -Force apps\web\dist-apk | Out-Null
-Copy-Item apps\web\android\app\build\outputs\apk\release\app-release.apk "apps\web\dist-apk\NaruReader-$versi.apk" -Force
-Get-Item "apps\web\dist-apk\NaruReader-$versi.apk" | Select-Object Name, Length
+$akar = 'D:\CODE\comic\naruread-app'
+$versi = (Get-Content "$akar\apps\web\package.json" -Raw | ConvertFrom-Json).version
+New-Item -ItemType Directory -Force "$akar\apps\web\dist-apk" | Out-Null
+Copy-Item "$akar\apps\web\android\app\build\outputs\apk\release\app-release.apk" "$akar\apps\web\dist-apk\NaruReader-$versi.apk" -Force
+Get-Item "$akar\apps\web\dist-apk\NaruReader-$versi.apk" | Select-Object Name, Length
 ```
 
 **Nama berkasnya tidak boleh diubah.** Pengecek pembaruan di dalam aplikasi
@@ -229,10 +237,17 @@ judul rilisnya — tag di repo ini dipakai ulang terus (`APK`).
 
 ## 5. Periksa hasilnya sebelum diunggah
 
+> **Jalurnya ABSOLUT, dan itu disengaja.** Langkah 4.5 meninggalkan prompt di
+> `apps\web\android`. Jalur relatif seperti `apps\web\dist-apk\...` lalu
+> diselesaikan dari situ menjadi `apps\web\android\apps\web\dist-apk\...`, dan
+> yang muncul adalah `FileNotFoundException` — yang terbaca seperti build gagal
+> padahal APK-nya ada dan sehat.
+
 Tanda tangan dan rentang Android yang didukung:
 
 ```powershell
-D:\Android\sdk\build-tools\36.0.0\apksigner.bat verify --print-certs --verbose "apps\web\dist-apk\NaruReader-0.1.2.apk"
+$v = (Get-Content D:\CODE\comic\naruread-app\apps\web\package.json -Raw | ConvertFrom-Json).version
+D:\Android\sdk\build-tools\36.0.0\apksigner.bat verify --print-certs --verbose "D:\CODE\comic\naruread-app\apps\web\dist-apk\NaruReader-$v.apk"
 ```
 
 Yang harus terbaca: `Verified using v2 scheme: true`, pemiliknya `CN=NaruReader`,
@@ -243,7 +258,7 @@ yang sudah ada di HP siapa pun.
 Versi, versionCode, dan minSdk:
 
 ```powershell
-D:\Android\sdk\build-tools\36.0.0\aapt2.exe dump badging "apps\web\dist-apk\NaruReader-0.1.2.apk" | Select-String "package:|sdkVersion"
+D:\Android\sdk\build-tools\36.0.0\aapt2.exe dump badging "D:\CODE\comic\naruread-app\apps\web\dist-apk\NaruReader-$v.apk" | Select-String "package:|sdkVersion|application-debuggable"
 ```
 
 ---
@@ -295,11 +310,38 @@ dipakai ulang setiap kali.
 
 ## 9. Sebelum membangun: pastikan yang lain masih hijau
 
+Jalankan semuanya. Seluruhnya bersama-sama masih jauh lebih cepat daripada satu
+build Gradle, dan menangkap sebagian besar hal yang membuat APK rusak di HP —
+di mana kegagalannya baru terlihat setelah sepuluh menit menunggu dan satu
+pemasangan.
+
 ```powershell
 npm run lint --workspace apps/web
+npm run test:extractor
+npm run test:audit
 npm run test:offline
 npm run test:rentang
+npm run test:id-sumber
+npm run test:import-lewati
+npm run test:sumber-cadangan
 ```
 
-Ketiganya jauh lebih cepat daripada satu build Gradle, dan menangkap sebagian
-besar hal yang membuat APK-nya rusak di HP.
+| Perintah | Yang dijaga |
+| --- | --- |
+| `lint` | Kesalahan sintaks dan impor mati di seluruh `apps/web/src` |
+| `test:extractor` | Pembacaan halaman seri dan halaman baca dari situs sumber |
+| `test:audit` | Bot pengawas: berkas halaman rusak, nomor chapter bolong |
+| `test:offline` | Lapisan simpan-ke-HP, dijalankan sungguhan di Chromium |
+| `test:rentang` | Hitungan rentang chapter pada panel "Simpan ke HP" |
+| `test:id-sumber` | Alokasi id lokal untuk komik dari situs sumber |
+| `test:import-lewati` | Chapter yang sudah ada TIDAK diunduh ulang saat impor |
+| `test:sumber-cadangan` | Sumber cadangan per komik: pencatatan, persetujuan, penghapusan |
+
+Tidak satu pun dari uji ini menyentuh database sungguhan di `apps/api/data` —
+yang butuh database membuat salinan sementara di folder temp dan membuangnya
+lagi setelah selesai.
+
+Yang TIDAK tertutup uji dan hanya bisa dibuktikan di HP: unduh chapter langsung
+dari situs sumber ke penyimpanan HP (header Referer ke tiap CDN, dan tempat
+`@capacitor/file-transfer` benar-benar menulis). Uji dua chapter dari satu seri
+dulu sebelum mengantre dua puluh.

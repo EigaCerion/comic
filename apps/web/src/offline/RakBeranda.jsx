@@ -70,7 +70,7 @@ export const RakBeranda = () => {
           Tersimpan di HP
           <span className="ml-2 text-xs font-normal opacity-60">{formatBytes(bytes)}</span>
         </h2>
-        <Link to="/offline" className="flex-none text-xs font-semibold text-naruto hover:underline">
+        <Link to="/offline" className="flex-none text-xs font-semibold text-primary hover:underline">
           Kelola
         </Link>
       </div>

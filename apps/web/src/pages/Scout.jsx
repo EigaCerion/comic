@@ -26,9 +26,9 @@ const SARINGAN_BAGIAN = [
 ];
 
 const LENCANA = {
-  baru: { label: 'Baru', kelas: 'border-naruto/50 bg-naruto/20 text-naruto' },
-  update: { label: 'Ada update', kelas: 'border-shinobi/50 bg-shinobi/20 text-shinobi' },
-  punya: { label: 'Sudah punya', kelas: 'border-leaf/50 bg-leaf/20 text-leaf-light' },
+  baru: { label: 'Baru', kelas: 'border-primary/50 bg-primary/20 text-primary' },
+  update: { label: 'Ada update', kelas: 'border-accent/50 bg-accent/20 text-accent' },
+  punya: { label: 'Sudah punya', kelas: 'border-success/50 bg-success/20 text-success' },
 };
 
 // Toast dipasang tanpa batas lebar di tengah layar, sedangkan judul di situs
@@ -77,8 +77,8 @@ const Chip = ({ aktif, onClick, children }) => (
     aria-pressed={aktif}
     className={`chip px-3 py-1 ${
       aktif
-        ? 'border-naruto/50 bg-naruto/15 text-naruto'
-        : 'hover:border-night/20 dark:hover:border-paper/20'
+        ? 'border-primary/50 bg-primary/15 text-primary'
+        : 'hover:border-primary/40'
     }`}
   >
     {children}
@@ -133,7 +133,7 @@ const KartuScout = ({ item, diantre, memuat, onImpor }) => {
     // — dan tombol yang masih hidup di situ berarti antrian ganda.
     if (diantre != null) {
       return (
-        <p className="text-[11px] font-semibold text-leaf-light">
+        <p className="text-[11px] font-semibold text-success">
           ✓ {diantre > 0 ? `${diantre} chapter diantre` : 'sudah diantre'} ·{' '}
           <Link to="/downloads" className="underline">
             lihat
@@ -144,13 +144,13 @@ const KartuScout = ({ item, diantre, memuat, onImpor }) => {
 
     if (item.status === 'punya') {
       return (
-        <p className="text-[11px] text-night/45 dark:text-paper/45">
+        <p className="text-[11px] text-txt-2">
           ✓ Lengkap di koleksi
           {item.lintasSitus && ` dari ${labelSumber(item.koleksi.sumber)}`}
           {item.koleksi && (
             <>
               {' · '}
-              <Link to={`/comic/${item.koleksi.slug}`} className="underline hover:text-naruto">
+              <Link to={`/comic/${item.koleksi.slug}`} className="underline hover:text-primary">
                 buka
               </Link>
             </>
@@ -167,7 +167,7 @@ const KartuScout = ({ item, diantre, memuat, onImpor }) => {
             asalnya. Disebut di atas tombolnya, bukan disembunyikan, karena
             penomoran chapter antar situs tidak selalu sama. */}
         {item.lintasSitus && (
-          <p className="mb-1.5 truncate text-[11px] text-night/50 dark:text-paper/50">
+          <p className="mb-1.5 truncate text-[11px] text-txt-2">
             Koleksi Anda dari {labelSumber(item.koleksi.sumber)}
           </p>
         )}
@@ -196,7 +196,7 @@ const KartuScout = ({ item, diantre, memuat, onImpor }) => {
     // judul utuh — satu judul 90 karakter cukup untuk melebarkan kolomnya dan
     // memunculkan scroll horizontal di 375px.
     <article className="card flex min-w-0 flex-col overflow-hidden">
-      <div className="relative aspect-[2/3] overflow-hidden bg-paper-line dark:bg-night-line">
+      <div className="relative aspect-[2/3] overflow-hidden bg-surface-soft">
         <Sampul item={item} />
         <span
           className={`absolute left-2 top-2 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${lencana.kelas}`}
@@ -209,7 +209,7 @@ const KartuScout = ({ item, diantre, memuat, onImpor }) => {
         <h3 className="truncate text-sm font-bold leading-snug" title={item.title}>
           {item.title}
         </h3>
-        <p className="truncate text-[11px] text-night/50 dark:text-paper/50">
+        <p className="truncate text-[11px] text-txt-2">
           {[labelSumber(item.sourceHost), item.tipe, item.genre].filter(Boolean).join(' · ')}
         </p>
         <p className="text-xs font-semibold">
@@ -221,7 +221,7 @@ const KartuScout = ({ item, diantre, memuat, onImpor }) => {
               ? 'Nomor chapter tidak terbaca'
               : `Chapter ${formatChapterNumber(nomor)}`}
         </p>
-        <p className="truncate text-[11px] text-night/40 dark:text-paper/40">{waktu}</p>
+        <p className="truncate text-[11px] text-txt-2">{waktu}</p>
         <div className="mt-auto pt-2">{aksi()}</div>
       </div>
     </article>
@@ -273,7 +273,7 @@ const HasilCariSumber = ({ hasil, diantre, sedangImpor, onImpor, onUlang, onTutu
             <span aria-hidden="true">🌐</span> Hasil dari situs sumber
           </h2>
           {hasil.originalArgs && (
-            <p className="break-words text-xs text-night/50 dark:text-paper/50">
+            <p className="break-words text-xs text-txt-2">
               untuk “{hasil.originalArgs}”
             </p>
           )}
@@ -315,7 +315,7 @@ const HasilCariSumber = ({ hasil, diantre, sedangImpor, onImpor, onUlang, onTutu
           {/* Galat disebut per situs. Tanpa ini, "0 hasil" dari situs yang
               sedang mati terbaca sama dengan judul yang memang tidak ada. */}
           {bergalat.length > 0 && (
-            <ul className="mt-3 space-y-1 break-words rounded-xl border border-danger/40 bg-danger/5 px-4 py-2 text-xs leading-relaxed text-night/70 dark:text-paper/70">
+            <ul className="mt-3 space-y-1 break-words rounded-xl border border-danger/40 bg-danger/5 px-4 py-2 text-xs leading-relaxed text-txt-2">
               {bergalat.map((entri) => (
                 <li key={entri.host}>
                   <b>{labelSumber(entri.host)}</b> — {entri.galat}
@@ -325,7 +325,7 @@ const HasilCariSumber = ({ hasil, diantre, sedangImpor, onImpor, onUlang, onTutu
           )}
 
           {tidakDidukung.length > 0 && (
-            <p className="mt-2 text-xs text-night/50 dark:text-paper/50">
+            <p className="mt-2 text-xs text-txt-2">
               Pencarian {tidakDidukung.map((host) => labelSumber(host)).join(', ')} belum didukung —
               judul dari situs itu tetap muncul di etalase saat sedang update.
             </p>
@@ -490,13 +490,13 @@ export const Scout = () => {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-black">Scout</h1>
-          <p className="text-sm text-night/50 dark:text-paper/50">
+          <p className="text-sm text-txt-2">
             Etalase judul dari situs sumber — pilih yang mau masuk koleksi tanpa perlu membuka
             situsnya sendiri.
           </p>
         </div>
         <div className="flex flex-none items-center gap-3">
-          <span className="text-xs text-night/45 dark:text-paper/45">
+          <span className="text-xs text-txt-2">
             {scannedAt ? `dipindai ${formatRelativeTime(scannedAt)}` : 'belum pernah dipindai'}
           </span>
           <button type="button" className="btn-ghost" onClick={segarkan} disabled={sibuk}>
@@ -509,7 +509,7 @@ export const Scout = () => {
           kosong tanpa penjelasan. Yang penting pengguna tahu ia sedang melihat
           hasil pindaian lama, dan tahu tombol mana yang memperbaikinya. */}
       {query.data?.basi && scannedAt && (
-        <p className="mt-4 rounded-xl border border-naruto/40 bg-naruto/5 px-4 py-2 text-xs leading-relaxed text-night/70 dark:text-paper/70">
+        <p className="mt-4 rounded-xl border border-primary/40 bg-primary/5 px-4 py-2 text-xs leading-relaxed text-txt-2">
           Yang tampil di bawah adalah hasil pindaian {formatRelativeTime(scannedAt)} dan kemungkinan
           sudah tertinggal dari situsnya. Tekan Segarkan untuk membaca ulang.
         </p>
@@ -518,7 +518,7 @@ export const Scout = () => {
       {/* Sumber yang gagal disebut namanya. Tanpa ini, etalase yang tiba-tiba
           tanpa kartu komikindo terbaca seperti komikindo sedang tidak update. */}
       {sumberGagal.length > 0 && (
-        <p className="mt-4 break-words rounded-xl border border-danger/40 bg-danger/5 px-4 py-2 text-xs leading-relaxed text-night/70 dark:text-paper/70">
+        <p className="mt-4 break-words rounded-xl border border-danger/40 bg-danger/5 px-4 py-2 text-xs leading-relaxed text-txt-2">
           Pindaian terakhir gagal untuk{' '}
           <b>{sumberGagal.map((entri) => labelSumber(entri.host)).join(', ')}</b> — kartunya mungkin
           sudah tertinggal. {sumberGagal[0].galat}
@@ -592,7 +592,7 @@ export const Scout = () => {
         </form>
         {/* Satu kotak, dua perilaku — disebut terang-terangan supaya kartu
             etalase yang menyusut saat mengetik tidak dikira hasil pencarian. */}
-        <p className="-mt-1 text-[11px] leading-relaxed text-night/45 dark:text-paper/45">
+        <p className="-mt-1 text-[11px] leading-relaxed text-txt-2">
           Mengetik hanya menyaring etalase. Enter atau tombol Cari (minimal {CARI_MIN} huruf) mencari
           langsung di situs sumber — untuk judul yang tidak sedang tampil di etalase.
         </p>

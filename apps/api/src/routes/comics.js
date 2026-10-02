@@ -6,6 +6,7 @@ import comicService from '../services/comicService.js';
 import coverService from '../services/coverService.js';
 import chapterService from '../services/chapterService.js';
 import progressService from '../services/progressService.js';
+import sumberService from '../services/sumberService.js';
 
 const router = Router();
 
@@ -144,6 +145,74 @@ router.post(
   wajibLogin,
   asyncHandler(async (req, res) => {
     res.json(comicService.toggleFavorite(Number(req.params.id)));
+  }),
+);
+
+/*
+ * ── Sumber komik ────────────────────────────────────────────────────────
+ *
+ * Alamat halaman seri komik ini di situs-situs sumber. Satu yang aktif (tercatat
+ * di comics.source_url) dan sisanya cadangan; begitu yang aktif mati, "Cek
+ * chapter baru" berpindah sendiri ke cadangan yang sudah disetujui.
+ *
+ * Seluruhnya di balik kelola_koleksi, sama seperti /imports dan /scout: yang
+ * ditentukan di sini adalah dari situs mana berkas akan diunduh ke disk
+ * pemiliknya.
+ */
+
+// GET /api/comics/:id/sumber — daftar sumber yang diketahui
+router.get(
+  '/:id/sumber',
+  wajibKemampuan('kelola_koleksi'),
+  asyncHandler(async (req, res) => {
+    res.json(sumberService.daftarSumber(Number(req.params.id)));
+  }),
+);
+
+// POST /api/comics/:id/sumber — tempel satu alamat sendiri (langsung siap pakai)
+router.post(
+  '/:id/sumber',
+  wajibKemampuan('kelola_koleksi'),
+  asyncHandler(async (req, res) => {
+    const seriesUrl = String(req.body?.series_url ?? req.body?.seriesUrl ?? '').trim();
+    if (!seriesUrl) throw badRequest('series_url wajib diisi');
+    // Alamat yang diketik tangan TIDAK perlu persetujuan terpisah: mengetiknya
+    // sudah persetujuan itu sendiri.
+    sumberService.catatSumber({ comicId: Number(req.params.id), seriesUrl, status: 'siap' });
+    res.status(201).json(sumberService.daftarSumber(Number(req.params.id)));
+  }),
+);
+
+// POST /api/comics/:id/sumber/cari — cari komik ini di situs lain
+router.post(
+  '/:id/sumber/cari',
+  wajibKemampuan('kelola_koleksi'),
+  asyncHandler(async (req, res) => {
+    res.json(await sumberService.cariSumberLain(Number(req.params.id)));
+  }),
+);
+
+// POST /api/comics/:id/sumber/:sumberId/setujui — calon jadi sumber siap pakai
+router.post(
+  '/:id/sumber/:sumberId/setujui',
+  wajibKemampuan('kelola_koleksi'),
+  asyncHandler(async (req, res) => {
+    res.json(
+      sumberService.setujuiSumber({
+        comicId: Number(req.params.id),
+        id: Number(req.params.sumberId),
+        pakaiSekarang: req.body?.pakai_sekarang === true || req.body?.pakaiSekarang === true,
+      }),
+    );
+  }),
+);
+
+// DELETE /api/comics/:id/sumber/:sumberId
+router.delete(
+  '/:id/sumber/:sumberId',
+  wajibKemampuan('kelola_koleksi'),
+  asyncHandler(async (req, res) => {
+    res.json(sumberService.hapusSumber({ comicId: Number(req.params.id), id: Number(req.params.sumberId) }));
   }),
 );
 

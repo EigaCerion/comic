@@ -18,10 +18,28 @@ import { ErrorState, ProgressBar, Spinner } from '../components/Common/index.jsx
 import { RatingKomentar } from '../components/Interaksi/RatingKomentar.jsx';
 import { useAuth } from '../hooks/useAuth.js';
 import { IS_APP } from '../platform/index.js';
+import SumberKomik from '../components/Sumber/SumberKomik.jsx';
 import { urlMedia } from '../platform/server.js';
 import { PanelSimpanKeHP, TombolSimpanChapter, TombolSimpanMassal } from '../offline/SimpanKeHP.jsx';
 import { showToast } from '../store/slices/uiSlice.js';
 import { formatBytes, formatChapterNumber, formatRelativeTime, statusColor } from '../utils/format.js';
+
+/*
+ * Host saja, untuk kabar "sumber pindah ke …".
+ *
+ * Yang ditampilkan nama situsnya, bukan URL penuh: alamat halaman seri panjang
+ * dan tidak terbaca di dalam toast selebar layar HP, sementara yang benar-benar
+ * ingin diketahui orangnya saat sumber berpindah sendiri hanya satu hal —
+ * sekarang chapternya diambil dari mana.
+ */
+const hostDariUrl = (url) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return 'situs lain';
+  }
+};
+
 
 const DownloadForm = ({ comicId, onDone }) => {
   const dispatch = useDispatch();
@@ -62,7 +80,7 @@ const DownloadForm = ({ comicId, onDone }) => {
   return (
     <form onSubmit={submit} className="card mt-3 space-y-3 p-5">
       <p className="text-sm font-bold">Tambah chapter ke antrian download</p>
-      <p className="text-xs text-night/50 dark:text-paper/50">
+      <p className="text-xs text-txt-2">
         Isi <b>salah satu</b>: URL halaman chapter (bot yang mencari gambarnya), atau daftar URL
         gambar kalau halaman itu tidak bisa dibaca. Berguna juga untuk menambal chapter yang hilang
         memakai sumber lain. Semua URL divalidasi terhadap allowlist domain di <code>.env</code>.
@@ -157,10 +175,10 @@ const GantiChapterForm = ({ chapter, onDone }) => {
     <form
       id={`ganti-chapter-${chapter.id}`}
       onSubmit={submit}
-      className="space-y-3 border-t border-paper-line px-4 py-4 dark:border-night-line"
+      className="space-y-3 border-t border-line px-4 py-4"
     >
       <p className="text-sm font-bold">Ganti isi Chapter {nomor}</p>
-      <p className="text-xs leading-relaxed text-night/50 dark:text-paper/50">
+      <p className="text-xs leading-relaxed text-txt-2">
         Chapter ini diunduh ulang ke tempat yang sama dan halaman lamanya tidak dipakai lagi.{' '}
         <b>Posisi baca dan bookmark tetap aman.</b> Isi <b>salah satu</b>: URL halaman chapter dari
         situs lain, atau daftar URL gambar kalau halamannya tidak bisa dibaca. Pastikan itu chapter
@@ -172,11 +190,11 @@ const GantiChapterForm = ({ chapter, onDone }) => {
           yang dipangkas saat diproses, misalnya. Untuk itu cukup unduh ulang
           dari tautan yang sama, jadi tautannya ditawarkan untuk dipakai lagi. */}
       {chapter.sourceUrl && (
-        <p className="text-[11px] text-night/50 dark:text-paper/50">
+        <p className="text-[11px] text-txt-2">
           Sumber sekarang: <span className="break-all font-mono">{chapter.sourceUrl}</span>{' '}
           <button
             type="button"
-            className="font-semibold underline hover:text-naruto"
+            className="font-semibold underline hover:text-primary"
             onClick={() => setForm({ ...form, chapterUrl: chapter.sourceUrl })}
           >
             pakai lagi
@@ -323,6 +341,7 @@ export const ComicDetail = () => {
   const [order, setOrder] = useState('asc');
   const [showDownloadForm, setShowDownloadForm] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [showSumber, setShowSumber] = useState(false);
   const [showSimpan, setShowSimpan] = useState(false);
   // Satu formulir Ganti terbuka sekaligus: daftar chapter bisa ratusan baris,
   // dan dua formulir terbuka berjauhan mudah membuat URL masuk ke chapter yang
@@ -367,7 +386,8 @@ export const ComicDetail = () => {
           type: hasil.error ? 'error' : 'success',
           message:
             hasil.error ??
-            `Sumber punya ${hasil.diSumber} chapter, koleksi ${hasil.diKoleksi} — ${hasil.diantre} diantre`,
+            `Sumber punya ${hasil.diSumber} chapter, koleksi ${hasil.diKoleksi} — ${hasil.diantre} diantre` +
+              (hasil.berpindahSumber ? ` · sumber pindah ke ${hostDariUrl(hasil.sumberDipakai)}` : ''),
         }),
       );
     } catch (error) {
@@ -464,7 +484,7 @@ export const ComicDetail = () => {
               className="w-full rounded-lg object-cover shadow-scroll"
             />
           ) : (
-            <div className="flex aspect-[2/3] items-center justify-center rounded-lg bg-leaf/10 text-5xl">
+            <div className="flex aspect-[2/3] items-center justify-center rounded-lg bg-surface-soft text-5xl">
               🍥
             </div>
           )}
@@ -491,7 +511,7 @@ export const ComicDetail = () => {
           </div>
 
           <h1 className="mt-3 text-2xl font-black leading-tight">{comic.title}</h1>
-          <p className="mt-1 text-sm text-night/60 dark:text-paper/60">
+          <p className="mt-1 text-sm text-txt-2">
             {comic.author ?? 'Tanpa author'}
             {comic.artist && comic.artist !== comic.author ? ` · art: ${comic.artist}` : ''}
           </p>
@@ -499,7 +519,7 @@ export const ComicDetail = () => {
           {comic.genres.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {comic.genres.map((genre) => (
-                <Link key={genre} to={`/browse?genre=${encodeURIComponent(genre)}`} className="chip hover:border-naruto">
+                <Link key={genre} to={`/browse?genre=${encodeURIComponent(genre)}`} className="chip hover:border-primary">
                   {genre}
                 </Link>
               ))}
@@ -507,7 +527,7 @@ export const ComicDetail = () => {
           )}
 
           {comic.description && (
-            <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-night/70 dark:text-paper/70">
+            <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-txt-2">
               {comic.description}
             </p>
           )}
@@ -555,6 +575,11 @@ export const ComicDetail = () => {
               </button>
             )}
             {bisa('kelola_koleksi') && (
+              <button type="button" className="btn-ghost" onClick={() => setShowSumber((v) => !v)}>
+                🔗 Sumber
+              </button>
+            )}
+            {bisa('kelola_koleksi') && (
               <button type="button" className="btn-ghost" onClick={periksaKelengkapan} disabled={isAuditing}>
                 {isAuditing ? 'Memeriksa…' : '🛡️ Periksa kelengkapan'}
               </button>
@@ -581,6 +606,15 @@ export const ComicDetail = () => {
 
       {showDownloadForm && <DownloadForm comicId={comic.id} onDone={() => setShowDownloadForm(false)} />}
 
+      {/* Dipasang sebagai panel yang dibuka, bukan selalu tampil: halaman ini
+          sudah panjang, dan daftar sumber hanya dilihat saat ada yang salah —
+          perpindahannya sendiri berjalan tanpa panel ini pernah dibuka. */}
+      {showSumber && (
+        <div className="mt-6">
+          <SumberKomik comicId={comic.id} />
+        </div>
+      )}
+
       <section className="mt-8">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="section-title">
@@ -598,7 +632,7 @@ export const ComicDetail = () => {
         {chaptersQuery.isLoading && <Spinner />}
 
         {chapters.length === 0 && !chaptersQuery.isLoading && (
-          <p className="card px-4 py-8 text-center text-sm text-night/60 dark:text-paper/60">
+          <p className="card px-4 py-8 text-center text-sm text-txt-2">
             Belum ada chapter. Tambahkan lewat upload manual atau antrian download.
           </p>
         )}
@@ -625,12 +659,12 @@ export const ComicDetail = () => {
                       disabled ? 'opacity-60' : ''
                     }`}
                   >
-                    <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-leaf/10 text-sm font-bold">
+                    <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-surface-soft text-sm font-bold">
                       {nomor}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">{chapter.title || `Chapter ${nomor}`}</p>
-                      <p className="text-xs text-night/50 dark:text-paper/50">
+                      <p className="text-xs text-txt-2">
                         {chapter.isDownloaded
                           ? `${chapter.totalPages} halaman · ${formatBytes(chapter.fileSize)}`
                           : 'Belum diunduh'}
@@ -649,7 +683,7 @@ export const ComicDetail = () => {
                       {kelola && (
                         <button
                           type="button"
-                          className={`btn-ghost px-2 py-1 text-xs ${formTerbuka ? 'border-naruto/50 text-naruto' : ''}`}
+                          className={`btn-ghost px-2 py-1 text-xs ${formTerbuka ? 'border-primary/50 text-primary' : ''}`}
                           onClick={() => setChapterDiganti(formTerbuka ? null : chapter.id)}
                           aria-expanded={formTerbuka}
                           aria-controls={`ganti-chapter-${chapter.id}`}

@@ -1,15 +1,60 @@
-/* Hidden Leaf Village theme — token warna dipakai Tailwind (tailwind.config.js)
-   dan komponen yang butuh nilai mentah. */
+/*
+ * Design token NaruReader — Soft Lavender + Warm Neutral.
+ *
+ * SATU sumber kebenaran warna untuk seluruh aplikasi: web dan APK Android.
+ * tailwind.config.js tidak memuat satu pun nilai hex; ia hanya menunjuk
+ * variabel di berkas ini.
+ *
+ * ── Kenapa saluran RGB, bukan hex ─────────────────────────────────────────
+ *
+ * Nilainya ditulis sebagai tiga angka ("139 123 184"), bukan "#8B7BB8", karena
+ * Tailwind membentuknya jadi `rgb(var(--c-primary) / <alpha-value>)`. Itu yang
+ * membuat `bg-primary/40`, `text-txt-2/60`, dan `border-line/50` tetap bekerja.
+ * Dengan hex, setiap kelas ber-opasitas di seluruh aplikasi diam-diam gagal —
+ * dan kegagalannya tidak terlihat sebagai galat, hanya sebagai warna yang
+ * ngotot pekat.
+ *
+ * ── Kenapa variabel, bukan dua nilai per token ────────────────────────────
+ *
+ * Variabelnya yang berganti saat tema berganti, bukan kelasnya. Artinya
+ * `bg-surface` sudah benar di terang dan gelap tanpa perlu pasangan
+ * `dark:bg-…` — dan komponen baru tidak punya kesempatan untuk lupa menulis
+ * separuhnya. Komponen LAMA yang masih berpasangan tetap bekerja: lihat alias
+ * di bagian bawah tailwind.config.js.
+ */
 :root {
-  --primary-green: #0f9d76;
-  --accent-orange: #ff8a2b;
-  --dark-bg: #070a0f;
-  --light-bg: #f4f6fa;
-  --warning-red: #f4436c;
-  --success-blue: #38bdf8;
-  --text-primary: #101722;
-  --text-secondary: #5a6779;
+  /* Dasar dan permukaan */
+  --c-bg: 248 247 250; /* #F8F7FA */
+  --c-surface: 255 255 255; /* #FFFFFF */
+  --c-surface-soft: 240 238 243; /* #F0EEF3 */
+  --c-line: 229 225 232; /* #E5E1E8 */
 
+  /* Tulisan */
+  --c-txt: 41 39 46; /* #29272E */
+  --c-txt-2: 119 114 127; /* #77727F */
+
+  /* Aksi dan penanda */
+  --c-primary: 139 123 184; /* #8B7BB8 */
+  --c-primary-hover: 121 105 168; /* #7969A8 */
+  --c-accent: 216 155 181; /* #D89BB5 */
+  --c-success: 126 173 150; /* #7EAD96 */
+  --c-warning: 213 173 112; /* #D5AD70 */
+  --c-danger: 201 130 130; /* #C98282 */
+
+  /*
+   * Tulisan DI ATAS warna aksi. Dipisah karena tidak selalu sama dengan --c-txt:
+   * lavender #8B7BB8 menuntut tulisan terang, sementara di tema gelap
+   * lavendernya lebih muda dan menuntut tulisan gelap. Tanpa token ini, tombol
+   * utama akan punya kontras yang benar di satu tema dan buruk di tema lain —
+   * jenis kegagalan yang baru ketahuan setelah ada yang mengeluh.
+   */
+  --c-on-primary: 255 255 255;
+
+  /*
+   * Latar baca. Sengaja BUKAN warna dasar aplikasi: saat membaca, yang boleh
+   * menarik perhatian hanyalah halaman komiknya. Di tema terang dibuat putih
+   * bersih supaya halaman berlatar putih menyatu tanpa garis tepi.
+   */
   --reader-bg: #ffffff;
 
   /*
@@ -42,52 +87,66 @@
   --aman-bawah: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
 }
 
+/*
+ * Tema gelap: charcoal hangat, bukan hitam murni.
+ *
+ * #17161A, bukan #000000. Hitam murni membuat sampul komik yang gelap kehilangan
+ * tepinya dan membuat mata bekerja lebih keras pada layar OLED di ruangan
+ * terang. Lavendernya dinaikkan (#A996D5) karena warna yang sama persis dengan
+ * tema terang akan terbaca kusam di atas latar gelap.
+ */
 .dark {
-  --text-primary: #eaf0f8;
-  --text-secondary: #8b9bb1;
-  /* Latar baca dibuat lebih gelap daripada latar aplikasi: saat membaca, yang
-     boleh bercahaya hanyalah halaman komiknya. */
-  --reader-bg: #04060a;
+  --c-bg: 23 22 26; /* #17161A */
+  --c-surface: 34 33 38; /* #222126 */
+  --c-surface-soft: 42 41 47; /* #2A292F */
+  --c-line: 53 51 59; /* #35333B */
+
+  --c-txt: 234 231 238; /* #EAE7EE */
+  --c-txt-2: 170 165 178; /* #AAA5B2 */
+
+  --c-primary: 169 150 213; /* #A996D5 */
+  --c-primary-hover: 181 164 223; /* #B5A4DF */
+  --c-accent: 216 162 186; /* #D8A2BA */
+  --c-success: 143 195 168; /* #8FC3A8 */
+  --c-warning: 225 188 124; /* #E1BC7C */
+  --c-danger: 217 150 150; /* #D99696 */
+
+  /* Lavender muda menuntut tulisan gelap di atasnya — lihat catatan di :root. */
+  --c-on-primary: 23 22 26;
+
+  /* Lebih gelap daripada latar aplikasi, dengan alasan yang sama seperti di
+     tema terang: halaman komiknya yang boleh bercahaya, bukan bingkainya. */
+  --reader-bg: #121114;
 }
 
 /*
  * Latar aplikasi.
  *
- * Tekstur titik-titik lama diganti dua lapis: kisi halus yang memberi kesan
- * bidang teknis, dan dua sapuan cahaya sangat tipis di sudut supaya layar
- * gelap tidak terasa mati. Keduanya sengaja di bawah 5% opasitas — begitu
- * latar mulai "terlihat", ia mulai mengganggu sampul komik yang jadi isi utama.
+ * Kisi titik dan sapuan cahaya yang lama DIBUANG. Keduanya lahir untuk tema
+ * gelap kebiruan yang terasa "teknis"; di atas warm neutral yang lembut ini
+ * teksturnya justru membuat halaman terlihat kotor, dan spesifikasinya memang
+ * meminta gradient ditahan. Yang tersisa satu bidang warna rata — dan itu yang
+ * membuat sampul komik jadi satu-satunya hal berwarna di layar.
  */
 .app-bg {
-  background-color: var(--light-bg);
-  background-image:
-    linear-gradient(rgba(16, 23, 34, 0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(16, 23, 34, 0.028) 1px, transparent 1px);
-  background-size: 32px 32px, 32px 32px;
+  background-color: rgb(var(--c-bg));
 }
 
-.dark .app-bg {
-  background-color: var(--dark-bg);
-  background-image:
-    radial-gradient(70rem 34rem at 12% 0%, rgba(255, 138, 43, 0.06), transparent 60%),
-    radial-gradient(60rem 32rem at 105% 3%, rgba(56, 189, 248, 0.055), transparent 62%),
-    linear-gradient(rgba(148, 180, 220, 0.022) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 180, 220, 0.022) 1px, transparent 1px);
-  /* Cahaya dipatok di kepala halaman dengan tinggi tetap, lalu ikut menggulung
-     bersama isi.
-
-     Sebelumnya dua lapis ini memakai `background-attachment: fixed`. Itu terlihat
-     bagus di laptop tapi memaksa browser mengecat ulang SELURUH viewport pada
-     setiap frame scroll — di HP dan tablet hasilnya scroll yang terasa berat.
-     Latar yang ikut menggulung bisa di-composite biasa, jadi praktis gratis. */
-  background-size: 100% 46rem, 100% 46rem, 32px 32px, 32px 32px;
-  background-repeat: no-repeat, no-repeat, repeat, repeat;
+/* Perpindahan tema dibuat halus, tapi HANYA untuk warna. Mentransisikan
+   `all` akan ikut menganimasikan tata letak setiap kali tema berganti, dan
+   di halaman berisi ratusan ubin komik itu terasa seperti aplikasi tersendat. */
+:root,
+.app-bg,
+body {
+  transition:
+    background-color 200ms ease,
+    color 200ms ease;
 }
 
 /* Scrollbar tipis supaya reader tidak terganggu */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.28) transparent;
+  scrollbar-color: rgb(var(--c-txt-2) / 0.35) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -96,12 +155,12 @@
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: rgba(148, 163, 184, 0.28);
+  background-color: rgb(var(--c-txt-2) / 0.3);
   border-radius: 9999px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 138, 43, 0.55);
+  background-color: rgb(var(--c-primary) / 0.6);
 }
 
 *::-webkit-scrollbar-track {

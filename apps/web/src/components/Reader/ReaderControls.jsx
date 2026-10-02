@@ -9,8 +9,8 @@ import ReaderSettings from './ReaderSettings.jsx';
 // tidak pernah berlaku sama sekali. Begitu bilahnya benar-benar hilang,
 // --aman-atas bernilai 0 dengan sendirinya.
 export const ReaderHeader = ({ chapter, comic, onBukaDaftar }) => (
-  <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-night-line bg-night px-4 pb-2 pt-[calc(0.5rem_+_var(--aman-atas))] text-paper lg:bg-night/90 lg:backdrop-blur">
-    <Link to={`/comic/${comic.slug}`} className="btn-ghost border-night-line px-2 py-1 text-paper" title="Kembali">
+  <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-surface px-4 pb-2 pt-[calc(0.5rem_+_var(--aman-atas))] text-txt lg:bg-surface/90 lg:backdrop-blur">
+    <Link to={`/comic/${comic.slug}`} className="btn-ghost px-2 py-1" title="Kembali">
       ←
     </Link>
     <div className="min-w-0 flex-1">
@@ -22,7 +22,7 @@ export const ReaderHeader = ({ chapter, comic, onBukaDaftar }) => (
         type="button"
         onClick={onBukaDaftar}
         title="Pilih chapter (C)"
-        className="flex w-full min-w-0 items-center gap-1 text-left text-xs text-paper/50 transition-colors hover:text-naruto"
+        className="flex w-full min-w-0 items-center gap-1 text-left text-xs text-txt-2 transition-colors hover:text-primary"
       >
         <span className="truncate">
           Chapter {formatChapterNumber(chapter.number)}
@@ -54,9 +54,9 @@ export const ReaderFooter = ({
     // pb-[...--aman-bawah]: bilah navigasi/gestur TIDAK ikut disembunyikan
     // reader — StatusBar.hide() hanya menyentuh status bar — jadi tanpa ini
     // tombol Prev/Next duduk tepat di bawah garis gestur.
-    <footer className="sticky bottom-0 z-20 border-t border-night-line bg-night px-4 pb-[calc(0.5rem_+_var(--aman-bawah))] pt-2 text-paper lg:bg-night/90 lg:backdrop-blur">
+    <footer className="sticky bottom-0 z-20 border-t border-line bg-surface px-4 pb-[calc(0.5rem_+_var(--aman-bawah))] pt-2 text-txt lg:bg-surface/90 lg:backdrop-blur">
       <div className="mx-auto flex max-w-4xl items-center gap-2">
-        <button type="button" className="btn-ghost border-night-line px-3 text-paper" onClick={onPrev}>
+        <button type="button" className="btn-ghost px-3" onClick={onPrev}>
           ◄ <span className="hidden sm:inline">Prev</span>
         </button>
 
@@ -64,21 +64,21 @@ export const ReaderFooter = ({
           <p className="font-mono text-sm">
             {currentPage} / {totalPages}
           </p>
-          <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-night-line">
+          <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-surface-soft">
             <div
-              className="h-full bg-naruto transition-[width]"
+              className="h-full bg-primary transition-[width]"
               style={{ width: `${totalPages ? (currentPage / totalPages) * 100 : 0}%` }}
             />
           </div>
         </div>
 
-        <button type="button" className="btn-ghost border-night-line px-3 text-paper" onClick={onNext}>
+        <button type="button" className="btn-ghost px-3" onClick={onNext}>
           <span className="hidden sm:inline">Next</span> ►
         </button>
 
         <button
           type="button"
-          className="btn-ghost border-night-line px-3 text-paper"
+          className="btn-ghost px-3"
           onClick={onBookmark}
           disabled={isBookmarking}
           title="Bookmark halaman ini"
@@ -89,7 +89,7 @@ export const ReaderFooter = ({
         <div className="relative">
           <button
             type="button"
-            className="btn-ghost border-night-line px-3 text-paper"
+            className="btn-ghost px-3"
             onClick={() => setSettingsOpen((open) => !open)}
             title="Pengaturan baca"
           >
@@ -104,28 +104,28 @@ export const ReaderFooter = ({
           layar tiap kali ingin melompat adalah beban yang tidak perlu. */}
       <div className="mx-auto mt-2 flex max-w-4xl items-center justify-between gap-2 text-xs">
         {prevChapterTo ? (
-          <Link to={prevChapterTo} className="min-w-0 truncate text-paper/60 hover:text-naruto">
+          <Link to={prevChapterTo} className="min-w-0 truncate text-txt-2 hover:text-primary">
             ← <span className="hidden sm:inline">Chapter </span>sebelumnya
           </Link>
         ) : (
-          <span className="text-paper/30">Chapter pertama</span>
+          <span className="text-txt-2/60">Chapter pertama</span>
         )}
 
         <button
           type="button"
           onClick={onBukaDaftar}
-          className="flex-none rounded-lg border border-night-line px-3 py-1 font-mono text-xs text-paper/80 transition-colors hover:border-naruto hover:text-naruto"
+          className="flex-none rounded-lg border border-line px-3 py-1 font-mono text-xs text-txt-2 transition-colors hover:border-primary hover:text-primary"
           title="Pilih chapter (C)"
         >
           ☰ Ch. {formatChapterNumber(chapterNumber)}
         </button>
 
         {nextChapterTo ? (
-          <Link to={nextChapterTo} className="min-w-0 truncate text-right text-paper/60 hover:text-naruto">
+          <Link to={nextChapterTo} className="min-w-0 truncate text-right text-txt-2 hover:text-primary">
             <span className="hidden sm:inline">Chapter </span>berikutnya →
           </Link>
         ) : (
-          <span className="text-paper/30">Chapter terakhir</span>
+          <span className="text-txt-2/60">Chapter terakhir</span>
         )}
       </div>
     </footer>

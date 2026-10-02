@@ -11,15 +11,15 @@ import {
 
 const Segmented = ({ label, value, options, onChange }) => (
   <div>
-    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-paper/50">{label}</p>
-    <div className="flex overflow-hidden rounded-lg border border-night-line">
+    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-txt-2">{label}</p>
+    <div className="flex overflow-hidden rounded-lg border border-line">
       {options.map((option) => (
         <button
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
           className={`flex-1 px-3 py-1.5 text-xs font-semibold transition ${
-            value === option.value ? 'bg-naruto text-night' : 'text-paper/70 hover:bg-night-soft'
+            value === option.value ? 'bg-primary text-primary-on' : 'text-txt-2 hover:bg-surface-soft'
           }`}
         >
           {option.label}
@@ -31,9 +31,9 @@ const Segmented = ({ label, value, options, onChange }) => (
 
 const Slider = ({ label, value, min, max, step = 1, suffix = '%', onChange }) => (
   <label className="block">
-    <span className="mb-1 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-paper/50">
+    <span className="mb-1 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-txt-2">
       {label}
-      <span className="font-mono text-paper/70">
+      <span className="font-mono text-txt-2">
         {value}
         {suffix}
       </span>
@@ -55,10 +55,10 @@ export const ReaderSettings = ({ onClose }) => {
   const { mode, fit, zoom, brightness, contrast, pageGap } = useSelector((state) => state.reader);
 
   return (
-    <div className="absolute bottom-full right-0 mb-3 w-72 space-y-4 rounded-xl border border-night-line bg-night-card p-4 text-paper shadow-scroll animate-slide-up">
+    <div className="absolute bottom-full right-0 mb-3 w-72 space-y-4 rounded-xl border border-line bg-surface p-4 text-txt shadow-scroll animate-slide-up">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold">Pengaturan Baca</h3>
-        <button type="button" className="text-paper/50 hover:text-paper" onClick={onClose} aria-label="Tutup">
+        <button type="button" className="text-txt-2 hover:text-txt" onClick={onClose} aria-label="Tutup">
           ✕
         </button>
       </div>
@@ -119,7 +119,7 @@ export const ReaderSettings = ({ onClose }) => {
         Reset tampilan
       </button>
 
-      <p className="text-[11px] leading-relaxed text-paper/40">
+      <p className="text-[11px] leading-relaxed text-txt-2">
         Shortcut: ← → halaman · [ ] chapter · Space lanjut · F ganti fit · Esc keluar
       </p>
     </div>

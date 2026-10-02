@@ -40,7 +40,7 @@ export const TombolSimpanChapter = ({ comic, chapter }) => {
     return (
       <button
         type="button"
-        className="btn-ghost px-2 py-1 font-mono text-xs text-naruto"
+        className="btn-ghost px-2 py-1 font-mono text-xs text-primary"
         onClick={() => batalkanUnduhan(chapter.id)}
         aria-label={`Batalkan unduhan chapter ${nomor}`}
         title="Ketuk untuk membatalkan"
@@ -73,7 +73,7 @@ export const TombolSimpanChapter = ({ comic, chapter }) => {
     return (
       <button
         type="button"
-        className="btn-ghost px-2 py-1 text-xs text-leaf-light"
+        className="btn-ghost px-2 py-1 text-xs text-success"
         onClick={hapus}
         aria-label={`Hapus chapter ${nomor} dari penyimpanan HP`}
         title="Tersimpan di HP — ketuk untuk menghapus"
@@ -210,7 +210,7 @@ export const PanelSimpanKeHP = ({ comic, chapters, mulaiDari, onClose }) => {
 
   if (berurutan.length === 0) {
     return (
-      <div className="card mt-4 p-4 text-sm text-night/60 dark:text-paper/60">
+      <div className="card mt-4 p-4 text-sm text-txt-2">
         Belum ada chapter yang berkasnya siap di server, jadi belum ada yang bisa dibawa ke HP.
       </div>
     );
@@ -269,12 +269,12 @@ export const PanelSimpanKeHP = ({ comic, chapters, mulaiDari, onClose }) => {
             onChange={(event) => setSampai(event.target.value)}
           />
         </label>
-        <span className="flex-none pb-2 text-[11px] text-night/50 dark:text-paper/50">
+        <span className="flex-none pb-2 text-[11px] text-txt-2">
           tersedia Ch {formatChapterNumber(terendah)}–{formatChapterNumber(tertinggi)}
         </span>
       </div>
 
-      <p className="text-xs text-night/60 dark:text-paper/60">
+      <p className="text-xs text-txt-2">
         {calon.length > 0
           ? `${calon.length} chapter akan disimpan${sudahAda > 0 ? ` · ${sudahAda} sudah ada di HP, dilewati` : ''}`
           : dalam.length === 0

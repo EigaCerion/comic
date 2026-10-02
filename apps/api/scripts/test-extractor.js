@@ -30,9 +30,9 @@ const seriesTs = `
 <a href="/daftar-komik/">Daftar Komik</a>
 </body></html>`;
 
-const s1 = extractSeries(seriesTs, 'https://siikomik.net/komik/komik-uji/');
+const s1 = extractSeries(seriesTs, 'https://ngomik.cc/manga/komik-uji/');
 check('ts-reader: judul', s1.title, 'Komik Uji');
-check('ts-reader: cover absolut', s1.coverUrl, 'https://siikomik.net/img/cover.jpg');
+check('ts-reader: cover absolut', s1.coverUrl, 'https://ngomik.cc/img/cover.jpg');
 check(
   'ts-reader: chapter terurut naik',
   s1.chapters.map((c) => c.number),
@@ -52,7 +52,7 @@ const chapterLazy = `
 </div>
 </body></html>`;
 
-const p1 = extractChapterPages(chapterLazy, 'https://siikomik.net/komik-uji-chapter-1/');
+const p1 = extractChapterPages(chapterLazy, 'https://ngomik.cc/komik-uji-chapter-1/');
 check('lazy-load: URL gambar terambil dari data-src/srcset', p1.imageUrls, [
   'https://cdn.example.com/ch1/001.jpg',
   'https://cdn.example.com/ch1/002.jpg',

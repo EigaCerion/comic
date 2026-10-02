@@ -12,7 +12,10 @@
   }
 
   body {
-    @apply font-sans text-night antialiased dark:text-paper;
+    /* Satu kelas, dua tema: --c-txt yang berganti, bukan kelasnya. Dulu di sini
+       ada pasangan `text-night dark:text-paper`, dan setiap komponen baru harus
+       mengingat untuk menulis separuh keduanya. */
+    @apply bg-bg font-sans text-txt antialiased;
   }
 
   h1,
@@ -22,7 +25,7 @@
   }
 
   :focus-visible {
-    @apply outline-none ring-2 ring-naruto/70 ring-offset-2 ring-offset-paper dark:ring-offset-night;
+    @apply outline-none ring-2 ring-primary/60 ring-offset-2 ring-offset-bg;
   }
 }
 
@@ -33,8 +36,11 @@
      harus dihitung ulang tiap frame — penyebab utama scroll berat di HP. Kesan
      berlapis sekarang dibangun dari warna dan garis rambut saja, yang gratis. */
   .card {
-    @apply rounded-2xl border border-paper-line bg-paper-soft transition-colors duration-200
-           dark:border-night-line dark:bg-night-card;
+    /* Bayangan sangat tipis, BUKAN pengganti garis tepi: keduanya dipakai
+       bersama supaya kartu tetap punya bentuk yang jelas di tema terang (tempat
+       bayangan nyaris tak terlihat) maupun gelap (tempat garis tepi yang
+       bekerja). */
+    @apply rounded-2xl border border-line bg-surface shadow-card transition-colors duration-200;
   }
 
   .btn {
@@ -43,17 +49,25 @@
            disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
   }
 
+  /* Tindakan yang menyelesaikan sesuatu: simpan, konfirmasi. Sage, bukan
+     lavender, supaya tidak bersaing dengan aksi utama di layar yang sama. */
   .btn-primary {
-    @apply btn bg-leaf text-white hover:bg-leaf-light hover:shadow-glow-leaf active:bg-leaf-dark;
+    @apply btn bg-success text-white hover:brightness-105 hover:shadow-glow-leaf active:brightness-95;
   }
 
+  /* Aksi UTAMA aplikasi — tombol yang paling sering ditekan di tiap layar.
+     Warnanya Primary sesuai spesifikasi; tulisannya lewat token sendiri karena
+     lavender tema terang menuntut tulisan putih sementara lavender tema gelap
+     menuntut tulisan gelap. */
   .btn-accent {
-    @apply btn bg-naruto text-night hover:bg-naruto-light hover:shadow-glow active:bg-naruto-dark;
+    @apply btn bg-primary text-primary-on hover:bg-primary-hover hover:shadow-glow active:bg-naruto-dark;
   }
 
+  /* Tombol sekunder: Surface Soft saat disentuh, tanpa isian saat diam —
+     supaya satu baris berisi lima tombol tidak terlihat seperti lima aksi
+     utama yang saling berebut. */
   .btn-ghost {
-    @apply btn border border-paper-line bg-transparent hover:border-night/20 hover:bg-paper
-           dark:border-night-line dark:hover:border-paper/20 dark:hover:bg-night-raise;
+    @apply btn border border-line bg-transparent hover:border-primary/40 hover:bg-surface-soft;
   }
 
   .btn-danger {
@@ -61,22 +75,22 @@
   }
 
   .input {
-    @apply w-full rounded-xl border border-paper-line bg-paper-soft px-3 py-2 text-sm
-           transition-colors placeholder:text-night/40
-           focus:border-naruto/70 focus:outline-none focus:ring-1 focus:ring-naruto/40
-           dark:border-night-line dark:bg-night-soft/80 dark:placeholder:text-paper/30;
+    @apply w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-txt
+           transition-colors placeholder:text-txt-2/70
+           focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25;
   }
 
+  /* Badge genre dan penanda kecil. Latarnya Surface Soft, bukan warna penuh:
+     yang boleh berwarna di halaman koleksi adalah sampul komiknya. */
   .chip {
-    @apply inline-flex items-center rounded-full border border-paper-line bg-night/[0.03] px-2.5 py-0.5
-           text-xs font-medium transition-colors
-           dark:border-night-line dark:bg-paper/[0.04];
+    @apply inline-flex items-center rounded-full border border-line bg-surface-soft px-2.5 py-0.5
+           text-xs font-medium text-txt-2 transition-colors;
   }
 
   /* Label mikro huruf besar berjarak — penanda bagian yang ringan, dipakai
      untuk keterangan yang tidak boleh mencuri perhatian dari isinya. */
   .label-mikro {
-    @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-night/45 dark:text-paper/45;
+    @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-txt-2;
   }
 
   /* Strip webtoon: dibaca sebagai satu gambar panjang. font-size/line-height 0

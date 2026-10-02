@@ -24,7 +24,7 @@ export const KabarPembaruan = () => {
   if (!tampilkanKabar) return null;
 
   return (
-    <div role="status" className="gutter-app bg-naruto/10 py-2 text-xs text-naruto">
+    <div role="status" className="gutter-app bg-primary/10 py-2 text-xs text-primary">
       <div className="flex items-center gap-3">
         <span className="min-w-0 flex-1">
           <span className="font-semibold">NaruReader {versiRilis}</span>{' '}

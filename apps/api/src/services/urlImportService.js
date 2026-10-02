@@ -90,6 +90,7 @@ export const importSeries = async ({
   chapters,
   comicId,
   priority = 0,
+  paksaUlang = false,
 }) => {
   const selected = (Array.isArray(chapters) ? chapters : []).filter((chapter) => chapter?.url);
   if (!selected.length) throw badRequest('Tidak ada chapter yang dipilih');
@@ -128,25 +129,68 @@ export const importSeries = async ({
 
   if (coverUrl && !comic.coverUrl) comic = await saveCoverFromUrl(comic, coverUrl, seriesUrl);
 
+  /*
+   * Chapter yang berkasnya SUDAH lengkap di koleksi tidak diantre lagi.
+   *
+   * Penjaga ini sudah lama ada di resyncComic() ("Cek chapter baru") dan tidak
+   * pernah ada di sini, padahal jalan inilah yang dipakai justru pada saat
+   * paling berbahaya: situs sumber lama mati, komiknya ditemukan lagi di situs
+   * lain, lalu seluruh daftar chapternya diimpor dari sana. Tanpa penjaga ini
+   * yang masuk antrian adalah SELURUH seri — 91 chapter untuk koleksi yang
+   * sudah punya 44 — dan setiap chapter yang sudah ada diunduh ulang dari nol:
+   * berjam-jam kuota, ribuan gambar ditulis ulang, dan antrian yang menutupi
+   * chapter baru yang sebenarnya dicari.
+   *
+   * enqueueChapterDownload SENGAJA tidak dipakai sebagai tempat penjaga ini,
+   * meski ia yang dilewati semua orang. Bot pengawas memperbaiki chapter yang
+   * halamannya rusak lewat fungsi yang sama, dan chapter itu berstatus
+   * is_downloaded = 1 — menolaknya di sana akan mematikan satu-satunya jalan
+   * perbaikan otomatis yang kita punya.
+   *
+   * is_downloaded = 1, bukan sekadar "barisnya ada": chapter yang pernah gagal
+   * meninggalkan baris dengan is_downloaded = 0, dan itu justru yang memang
+   * harus dicoba lagi.
+   */
+  const sudahLengkap = paksaUlang
+    ? new Set()
+    : new Set(
+        getDb()
+          .prepare('SELECT chapter_number FROM chapters WHERE comic_id = ? AND is_downloaded = 1')
+          .all(comic.id)
+          .map((row) => row.chapter_number),
+      );
+
   const queued = [];
   const skipped = [];
 
   selected.forEach((chapter, index) => {
+    const nomor = chapter.number ?? index + 1;
+
+    if (sudahLengkap.has(nomor)) {
+      skipped.push({ number: nomor, url: chapter.url, reason: 'sudah ada di koleksi' });
+      return;
+    }
+
     try {
       const { job } = enqueueChapterDownload({
         comicId: comic.id,
-        chapterNumber: chapter.number ?? index + 1,
+        chapterNumber: nomor,
         chapterTitle: chapter.title ?? null,
         chapterUrl: chapter.url,
         priority,
+        paksaUlang,
       });
-      queued.push({ number: chapter.number, jobId: job.id });
+      queued.push({ number: nomor, jobId: job.id });
     } catch (error) {
-      skipped.push({ number: chapter.number, url: chapter.url, reason: error.message });
+      skipped.push({ number: nomor, url: chapter.url, reason: error.message });
     }
   });
 
-  log.info(`import ${comic.slug}: ${queued.length} chapter masuk antrian, ${skipped.length} dilewati`);
+  const sudahAda = skipped.filter((satu) => satu.reason === 'sudah ada di koleksi').length;
+  log.info(
+    `import ${comic.slug}: ${queued.length} chapter masuk antrian, ${skipped.length} dilewati` +
+      (sudahAda ? ` (${sudahAda} sudah ada di koleksi)` : ''),
+  );
   return { comic, queued, skipped };
 };
 

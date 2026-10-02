@@ -20,10 +20,10 @@ const PERAN = [
 ];
 
 const WARNA_PERAN = {
-  super_admin: 'text-naruto',
-  publisher: 'text-shinobi',
-  editor: 'text-leaf-light',
-  author: 'text-leaf-light',
+  super_admin: 'text-primary',
+  publisher: 'text-accent',
+  editor: 'text-success',
+  author: 'text-success',
   reader: 'opacity-60',
 };
 

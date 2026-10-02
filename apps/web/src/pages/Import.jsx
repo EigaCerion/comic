@@ -68,7 +68,7 @@ const LocalImport = () => {
         <h2 className="section-title mb-4">
           <span aria-hidden="true">📂</span> Folder import
         </h2>
-        <p className="text-sm text-night/60 dark:text-paper/60">
+        <p className="text-sm text-txt-2">
           Taruh folder komik atau file <code>.cbz</code>/<code>.zip</code> di{' '}
           <code className="break-all">{importConfig?.importDir ?? 'apps/api/import'}</code>, lalu klik
           Segarkan. Satu subfolder = satu komik; subfolder di dalamnya = chapter.
@@ -84,7 +84,7 @@ const LocalImport = () => {
           {scan.isError && <ErrorState error={scan.error} onRetry={scan.refetch} />}
 
           {!scan.isLoading && items.length === 0 && (
-            <p className="rounded-lg border border-dashed border-paper-line px-4 py-8 text-center text-sm opacity-60 dark:border-night-line">
+            <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm opacity-60">
               Belum ada yang terdeteksi di folder import.
             </p>
           )}
@@ -93,7 +93,7 @@ const LocalImport = () => {
             {items.map((item) => (
               <li
                 key={item.path}
-                className="flex flex-wrap items-center gap-3 rounded-lg border border-paper-line px-4 py-3 dark:border-night-line"
+                className="flex flex-wrap items-center gap-3 rounded-lg border border-line px-4 py-3"
               >
                 <span aria-hidden="true">{item.kind === 'archive' ? '🗜️' : '📁'}</span>
                 <div className="min-w-0 flex-1">
@@ -155,12 +155,12 @@ const LocalImport = () => {
             ))}
             {doneJobs.map((job) => (
               <li key={job.id} className="text-sm">
-                <span className={job.status === 'completed' ? 'text-leaf-light' : 'text-danger'}>
+                <span className={job.status === 'completed' ? 'text-success' : 'text-danger'}>
                   {job.status === 'completed' ? '✓' : '✕'}
                 </span>{' '}
                 {job.label} — {job.chaptersDone} chapter
                 {job.comic && (
-                  <Link to={`/comic/${job.comic.slug}`} className="ml-2 text-naruto hover:underline">
+                  <Link to={`/comic/${job.comic.slug}`} className="ml-2 text-primary hover:underline">
                     buka
                   </Link>
                 )}
@@ -237,7 +237,7 @@ const UrlImport = () => {
         <h2 className="section-title mb-4">
           <span aria-hidden="true">🔗</span> Baca halaman seri
         </h2>
-        <p className="text-sm text-night/60 dark:text-paper/60">
+        <p className="text-sm text-txt-2">
           Tempel URL halaman daftar chapter. Host-nya harus ada di{' '}
           <code>ALLOWED_SOURCE_DOMAINS</code>, dan <code>robots.txt</code> situs dihormati kecuali
           kamu mematikan <code>RESPECT_ROBOTS</code>.
@@ -270,7 +270,7 @@ const UrlImport = () => {
                 terdeteksi
               </p>
               {series.existingComic && (
-                <p className="mt-1 text-xs text-shinobi">
+                <p className="mt-1 text-xs text-accent">
                   Sudah ada di library ({series.existingComic.totalChapters} chapter) — chapter yang
                   sama tidak akan diduplikasi.
                 </p>
@@ -290,7 +290,7 @@ const UrlImport = () => {
           </div>
 
           {(series.genres?.length > 0 || series.description) && (
-            <div className="mt-3 border-t border-paper-line pt-3 dark:border-night-line">
+            <div className="mt-3 border-t border-line pt-3">
               {series.genres?.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {series.genres.map((genre) => (
@@ -327,7 +327,7 @@ const UrlImport = () => {
             {series.chapters.map((chapter) => (
               <li
                 key={chapter.url}
-                className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-paper dark:hover:bg-night-soft"
+                className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-surface-soft"
               >
                 <input
                   type="checkbox"
@@ -341,7 +341,7 @@ const UrlImport = () => {
                 <span className="min-w-0 flex-1 truncate text-sm">{chapter.title || chapter.url}</span>
                 <button
                   type="button"
-                  className="flex-none text-xs text-naruto hover:underline"
+                  className="flex-none text-xs text-primary hover:underline"
                   onClick={() => previewChapter(chapter.url)}
                   disabled={isCheckingChapter}
                 >
@@ -352,7 +352,7 @@ const UrlImport = () => {
           </ul>
 
           {chapterPreview && (
-            <div className="mt-4 rounded-lg border border-paper-line px-3 py-2 text-xs dark:border-night-line">
+            <div className="mt-4 rounded-lg border border-line px-3 py-2 text-xs">
               <p className="font-semibold">
                 {chapterPreview.totalImages} gambar terdeteksi ({chapterPreview.extractor})
               </p>
@@ -369,7 +369,7 @@ const UrlImport = () => {
 
           <p className="mt-4 text-xs opacity-50">
             Chapter yang diantre diproses oleh worker download —{' '}
-            <Link to="/downloads" className="text-naruto hover:underline">
+            <Link to="/downloads" className="text-primary hover:underline">
               lihat progresnya
             </Link>
             .
@@ -388,11 +388,11 @@ export const Import = () => {
   return (
     <div>
       <h1 className="text-2xl font-black">Import Komik</h1>
-      <p className="mt-1 text-sm text-night/50 dark:text-paper/50">
+      <p className="mt-1 text-sm text-txt-2">
         Dua jalur: dari file yang sudah ada di disk, atau dari URL situs yang diizinkan.
       </p>
 
-      <div className="mt-5 flex overflow-hidden rounded-lg border border-paper-line dark:border-night-line">
+      <div className="mt-5 flex overflow-hidden rounded-lg border border-line">
         {[
           { value: 'local', label: '📂 Folder & CBZ' },
           { value: 'url', label: '🔗 Dari URL' },
@@ -402,7 +402,7 @@ export const Import = () => {
             type="button"
             onClick={() => setTab(option.value)}
             className={`flex-1 px-4 py-2 text-sm font-semibold transition ${
-              tab === option.value ? 'bg-leaf text-paper' : 'hover:bg-paper dark:hover:bg-night-soft'
+              tab === option.value ? 'bg-primary text-primary-on' : 'hover:bg-surface-soft'
             }`}
           >
             {option.label}
