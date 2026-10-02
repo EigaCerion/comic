@@ -9,6 +9,75 @@ dengan `package.json` akar). Membangun APK rilis: `apps/web/scripts/build-androi
 
 ---
 
+## 0.2.0
+
+Rilis tampilan. Tidak ada fitur yang hilang dan tidak ada yang perlu diunduh
+ulang — yang berubah adalah seluruh permukaan aplikasi.
+
+> **Pasang menimpa 0.1.2.** Tidak perlu mencopot, dan chapter yang sudah
+> tersimpan di HP tetap utuh.
+
+### Tampilan baru menyeluruh
+
+Warna lama — hijau Konoha, jingga Naruto, latar gelap kebiruan — diganti satu
+palet yang dipakai seluruh aplikasi: **Soft Lavender + Warm Neutral**. Latar
+terang tidak lagi putih mentah, latar gelap tidak lagi mendekati hitam, dan
+sampul komik sekarang satu-satunya hal berwarna kuat di layar.
+
+Yang berubah bukan sekadar warna latar dan tombol: kartu komik, navigasi,
+kotak pencarian, formulir, badge genre, kabar galat, dan penanda status semuanya
+dibawa ke satu sistem yang sama. Beberapa di antaranya sekalian diperbaiki
+artinya — status "Hiatus" dulu merah, sewarna dengan "gagal memuat" dan "hapus
+komik", padahal tidak ada yang rusak; sekarang kuning. Titik "sedang
+memeriksa…" dulu berwarna padahal ia bukan kabar baik maupun buruk; sekarang
+abu netral.
+
+### Tema terang dan gelap benar-benar setara
+
+Sebelumnya tiap komponen menulis dua warna — satu untuk terang, satu untuk
+gelap — dan komponen baru gampang lupa menulis separuhnya. Sekarang warnanya
+yang berganti, bukan kelasnya, jadi tidak ada lagi tulisan yang hilang di salah
+satu tema.
+
+Perpindahan temanya juga dibuat halus, dan hanya warnanya yang ditransisikan:
+menganimasikan seluruh tata letak akan terasa tersendat di halaman berisi
+ratusan ubin komik.
+
+### Reader mengikuti tema
+
+Bilah atas dan bawah reader dulu **dipaksa gelap** apa pun temanya. Di tema
+terang hasilnya dua bilah hitam pekat yang mengapit halaman komik putih — batas
+keras yang menarik mata keluar dari gambar, persis yang tidak diinginkan saat
+membaca. Sekarang keduanya mengikuti tema, dan area bacanya tetap punya warna
+sendiri yang lebih tenang daripada latar aplikasi.
+
+Kendali kecerahan dan kontras di panel setelan tidak disentuh.
+
+### Daftar situs sumber diperbarui
+
+Kiryuu pindah alamat; yang lama sudah mati total, jadi tanpa rilis ini sumber
+itu tidak akan pernah memberi hasil lagi di HP. Dua sumber yang sudah tidak
+pernah menjawab — **mgkomik.id** dan **siikomik.net** — dibuang supaya tidak
+lagi muncul sebagai pilihan yang pasti gagal.
+
+### Untuk yang membaca kodenya
+
+Tabel pola situs dipecah jadi satu berkas per situs
+(`packages/sumber/situs/`), lengkap dengan penjelasan keanehan masing-masing
+dan panduan tiga langkah menambah situs baru. Tidak ada satu pun `if (host ===
+...)` di dalam mesin ekstraksinya — situsnya dijelaskan sebagai data, bukan
+sebagai cabang kode.
+
+Warna aplikasi sekarang hidup di satu tempat (`apps/web/src/styles/theme.css`)
+sebagai variabel CSS; `tailwind.config.js` tidak memuat satu pun nilai hex.
+Mengganti tema di kemudian hari cukup menyunting satu berkas.
+
+Pengujian bertambah: `npm run test:sumber-cadangan` (22 pemeriksaan untuk sumber
+cadangan per komik) dan `npm run test:import-lewati` (12 pemeriksaan yang
+menjaga chapter yang sudah ada tidak diunduh ulang).
+
+---
+
 ## 0.1.2
 
 Rilis ini membereskan satu ketimpangan dan dua bug yang terlihat langsung di HP.
