@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import Sidebar from './Sidebar.jsx';
 import TopBar from './TopBar.jsx';
+import TabBawah from './TabBawah.jsx';
 import { IS_APP } from '../../platform/index.js';
 import { PitaOffline } from '../../offline/KabarLuring.jsx';
 import KabarPembaruan from '../../platform/KabarPembaruan.jsx';
@@ -71,15 +72,26 @@ export const AppLayout = () => (
       {/* max-w-7xl baru menggigit di viewport >= 1536, karena kolom ini sudah
           dipersempit 256px oleh sidebar. Dipertahankan sebagai pagar sadar
           untuk monitor sangat lebar, bukan karena ia aktif di layar biasa. */}
-      <main className="gutter-app mx-auto w-full max-w-7xl flex-1 py-6 lg:py-8 animate-fade-in">
+      {/* pb di build android memberi ruang untuk bilah tab yang MELAYANG di atas
+          isi halaman. Tanpa itu, baris terakhir tiap halaman tertutup bilahnya —
+          dan di halaman daftar, yang tertutup justru kartu terakhir. */}
+      <main
+        className={`gutter-app mx-auto w-full max-w-7xl flex-1 py-6 lg:py-8 animate-fade-in${
+          IS_APP ? ' pb-[calc(5rem_+_var(--aman-bawah))] lg:pb-8' : ''
+        }`}
+      >
         <Outlet />
       </main>
-      {/* Elemen terakhir dalam aliran halaman, jadi ia yang menyediakan ruang
-          untuk bilah navigasi/gestur di HP (--aman-bawah, theme.css). */}
-      <footer className="gutter-app border-t border-line pb-[calc(1rem_+_var(--aman-bawah))] pt-4 text-center text-xs text-txt-2">
-        NaruReader{VERSI ? ` v${VERSI}` : ''} — Phase 1 MVP · dibuat untuk koleksi lokal
-      </footer>
+      {/* Footer disembunyikan di build android: bilah tab sudah menempati tepi
+          bawah, dan dua bilah bertumpuk hanya menyempitkan layar baca. Versinya
+          tetap terbaca di Pengaturan. */}
+      {!IS_APP && (
+        <footer className="gutter-app border-t border-line pb-[calc(1rem_+_var(--aman-bawah))] pt-4 text-center text-xs text-txt-2">
+          NaruReader{VERSI ? ` v${VERSI}` : ''} — Phase 1 MVP · dibuat untuk koleksi lokal
+        </footer>
+      )}
     </div>
+    {IS_APP && <TabBawah />}
     <Toast />
   </div>
 );

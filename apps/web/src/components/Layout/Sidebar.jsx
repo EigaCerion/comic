@@ -5,24 +5,25 @@ import { closeSidebar } from '../../store/slices/uiSlice.js';
 import { useGetDownloadsQuery, useLogoutMutation } from '../../api/apiSlice.js';
 import { useAuth } from '../../hooks/useAuth.js';
 import { IS_APP } from '../../platform/index.js';
+import Ikon from '../Common/Ikon.jsx';
 
 const NAV = [
-  { to: '/', label: 'Beranda', icon: '🏠', end: true },
-  { to: '/browse', label: 'Jelajahi', icon: '🗺️' },
-  { to: '/browse?favorite=true', label: 'Favorit', icon: '⭐' },
+  { to: '/', label: 'Beranda', ikon: 'beranda', end: true },
+  { to: '/browse', label: 'Jelajahi', ikon: 'jelajahi' },
+  { to: '/browse?favorite=true', label: 'Favorit', ikon: 'favorit' },
   // Build android saja. Ditaruh setinggi ini, bukan di dasar daftar, karena saat
   // server tidak terjangkau ia satu-satunya menu yang masih ada isinya.
-  ...(IS_APP ? [{ to: '/offline', label: 'Tersimpan di HP', icon: '📴' }] : []),
+  ...(IS_APP ? [{ to: '/offline', label: 'Tersimpan di HP', ikon: 'tersimpan' }] : []),
   // Build android saja: membaca situs sumber langsung dari HP. Sengaja tanpa
   // `butuh` — menu ini justru untuk aplikasi yang belum kenal server mana pun,
   // jadi tidak ada izin di server yang bisa diperiksa untuknya.
-  ...(IS_APP ? [{ to: '/sumber', label: 'Situs Sumber', icon: '🌐' }] : []),
-  { to: '/downloads', label: 'Unduhan', icon: '📥', badge: 'downloads', butuh: 'kelola_koleksi' },
-  { to: '/scout', label: 'Scout', icon: '🔭', butuh: 'kelola_koleksi' },
-  { to: '/import', label: 'Import', icon: '📦', butuh: 'kelola_koleksi' },
-  { to: '/upload', label: 'Upload Manual', icon: '📤', butuh: 'unggah_chapter' },
-  { to: '/users', label: 'Kelola Akun', icon: '👥', butuh: 'kelola_pengguna' },
-  { to: '/settings', label: 'Pengaturan', icon: '⚙️' },
+  ...(IS_APP ? [{ to: '/sumber', label: 'Situs Sumber', ikon: 'sumber' }] : []),
+  { to: '/downloads', label: 'Unduhan', ikon: 'unduhan', badge: 'downloads', butuh: 'kelola_koleksi' },
+  { to: '/scout', label: 'Scout', ikon: 'scout', butuh: 'kelola_koleksi' },
+  { to: '/import', label: 'Import', ikon: 'impor', butuh: 'kelola_koleksi' },
+  { to: '/upload', label: 'Upload Manual', ikon: 'unggah', butuh: 'unggah_chapter' },
+  { to: '/users', label: 'Kelola Akun', ikon: 'akun', butuh: 'kelola_pengguna' },
+  { to: '/settings', label: 'Pengaturan', ikon: 'pengaturan' },
 ];
 
 // Catatan: `butuh` hanya menyembunyikan menu yang toh akan ditolak server.
@@ -146,7 +147,7 @@ export const Sidebar = () => {
               className={linkClass}
               onClick={() => dispatch(closeSidebar())}
             >
-              <span aria-hidden="true">{item.icon}</span>
+              <Ikon nama={item.ikon} className="h-[18px] w-[18px] flex-none" />
               <span className="flex-1">{item.label}</span>
               {item.badge === 'downloads' && activeJobs > 0 && (
                 <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-on">

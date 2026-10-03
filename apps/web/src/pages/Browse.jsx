@@ -4,6 +4,8 @@ import { useGetComicsQuery, useGetGenresQuery } from '../api/apiSlice.js';
 import ComicGrid from '../components/ComicList/ComicGrid.jsx';
 import { EmptyState, ErrorState, Spinner } from '../components/Common/index.jsx';
 import { setViewMode } from '../store/slices/uiSlice.js';
+import { IS_APP } from '../platform/index.js';
+import JelajahiApp from '../platform/JelajahiApp.jsx';
 
 const SORTS = [
   { value: 'latest', label: 'Terbaru diperbarui' },
@@ -41,6 +43,31 @@ export const Browse = () => {
 
   const pagination = query.data?.pagination;
   const items = query.data?.items ?? [];
+
+  /*
+   * Build android memakai susunan sendiri: penyaring jadi chip yang digeser,
+   * grid jadi tiga kolom. Query dan setParam diteruskan apa adanya, jadi yang
+   * berbeda tata letaknya — bukan data maupun alamat URL-nya, sehingga tautan
+   * dari web dan dari HP tetap menunjuk halaman yang sama.
+   *
+   * Ekspresi ini runtuh jadi `false` pada build web dan Rollup membuang
+   * JelajahiApp beserta cabang modulnya.
+   */
+  if (IS_APP) {
+    return (
+      <JelajahiApp
+        judul={favorite ? 'Favorit' : 'Jelajahi'}
+        pagination={pagination}
+        items={items}
+        query={query}
+        genres={genresData?.items ?? []}
+        filter={{ genre, status, sort, favorite, search, page }}
+        setParam={setParam}
+        sorts={SORTS}
+        statuses={STATUSES}
+      />
+    );
+  }
 
   return (
     <div>

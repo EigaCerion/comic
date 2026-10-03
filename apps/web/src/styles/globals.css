@@ -161,6 +161,41 @@
    * 170px adalah batas bawah sampul aspek 2/3 agar judul di gambar masih terbaca.
    * Di bawah sm tetap dua kolom tetap — itu yang sudah terbukti pas di 375px.
    */
+  /*
+   * Baris yang digeser mendatar — tulang punggung beranda di HP.
+   *
+   * snap-mandatory membuat geseran selalu berhenti rapi di tepi ubin, bukan di
+   * tengah-tengah sampul; tanpa itu baris sampul terasa licin dan separuh kartu
+   * selalu terpotong di tepi layar.
+   *
+   * Bilah gulir disembunyikan DI SINI saja, bukan global: di halaman yang
+   * panjang bilah gulir adalah petunjuk posisi yang berguna, sementara di baris
+   * mendatar setinggi 200px ia hanya memakan tinggi dan menutupi sampul.
+   * Geserannya sendiri tidak dimatikan — hanya penanda visualnya.
+   */
+  .geser-x {
+    @apply flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain;
+    scrollbar-width: none;
+  }
+
+  .geser-x::-webkit-scrollbar {
+    display: none;
+  }
+
+  .geser-x > * {
+    @apply snap-start;
+  }
+
+  /*
+   * Baris mendatar dibiarkan menyentuh tepi layar, bukan berhenti di dalam
+   * gutter. Ubin yang terpotong tepat di tepi adalah isyarat "masih ada
+   * lagi di sebelah kanan" — kalau barisnya berhenti rapi di dalam margin,
+   * ia terbaca sebagai daftar yang sudah habis.
+   */
+  .tepi-layar {
+    @apply -mx-4 px-4 sm:-mx-6 sm:px-6;
+  }
+
   .grid-komik {
     @apply grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(170px,1fr))] sm:gap-4 xl:gap-5;
   }

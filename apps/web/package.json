@@ -1,10 +1,11 @@
 {
   "name": "@naruread/web",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:android": "vite --mode android --port 5174",
     "build": "vite build",
     "build:android": "vite build --mode android && cap sync android",
     "ikon:android": "node scripts/buat-ikon-android.mjs",

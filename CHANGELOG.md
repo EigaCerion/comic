@@ -9,6 +9,76 @@ dengan `package.json` akar). Membangun APK rilis: `apps/web/scripts/build-androi
 
 ---
 
+## 0.3.0
+
+Rilis tata letak, dan seluruhnya hanya menyentuh aplikasi Android. Tampilan web
+tidak berubah sebaris pun.
+
+> **Pasang menimpa 0.2.0.** Tidak perlu mencopot, dan chapter yang sudah
+> tersimpan di HP tetap utuh.
+
+### Navigasi pindah ke bawah layar
+
+Laci samping adalah pola web: ia menuntut dua ketukan untuk setiap perpindahan,
+dan tombolnya duduk di pojok kiri atas — sudut terjauh dari ibu jari. Sekarang
+ada bilah tab di tepi bawah: **Beranda · Jelajahi · Sumber · Tersimpan ·
+Lainnya**, dengan lencana jumlah komik di tab Tersimpan.
+
+Menu selengkapnya tetap di laci yang sama, dibuka tab "Lainnya" — bukan
+disalin jadi lembar menu kedua yang suatu hari akan berbeda isinya.
+
+### Beranda disusun ulang
+
+Sampul komik sekarang mendapat ruang penuh di kepala halaman, satu judul per
+layar, digeser mendatar. Di bawahnya baris yang juga digeser untuk **Lanjut
+baca** (dengan bilah kemajuan di kaki tiap sampul) dan **Favorit**, lalu
+**Baru diperbarui** sebagai daftar bernomor.
+
+Grid ditinggalkan di HP karena dua kolom hanya memuat empat judul sebelum
+lipatan — seluruh koleksi terbaca sebagai satu daftar panjang tanpa penekanan.
+Baris mendatar memuat lebih banyak per tinggi layar, dan ubin yang terpotong di
+tepi kanan adalah isyarat "masih ada lagi" yang tidak dimiliki grid.
+
+### Jelajahi: penyaring jadi chip
+
+Tiga kotak pilihan yang dulu bertumpuk setinggi hampir satu layar penuh —
+sehingga yang pertama terlihat saat membuka Jelajahi adalah formulir, bukan satu
+pun komik — sekarang jadi dua baris chip yang digeser. Pilihan yang sedang aktif
+selalu terbaca tanpa membuka apa pun.
+
+Gridnya tiga kolom, bukan dua: sembilan judul muat sebelum lipatan, dan sampul
+selebar 108px masih mudah dikenali.
+
+### Tersimpan di HP: rak jadi terlipat
+
+Dulu tiap komik merender SELURUH chapternya sekaligus. Satu komik 180 chapter
+berarti 180 baris, dan beberapa komik berarti ribuan baris sekaligus — menggulir
+sampai komik kedua praktis mustahil. Sekarang tiap komik terlipat jadi satu
+baris, dan yang dibuka pun dibatasi 25 chapter dengan tombol untuk menampilkan
+sisanya.
+
+Tombol **hapus semua chapter** dipindah ke dalam panel yang terbuka. Sebelumnya
+ia duduk tepat di sebelah judul — penghapus permanen selebar jempol, persis di
+tempat yang disentuh orang saat hendak MEMBUKA komiknya.
+
+### Ikon diseragamkan
+
+Navigasi dulu memakai emoji ditambah satu glif teks, dan campuran itu tidak bisa
+dirapikan: emoji dilukis font sistem, jadi bentuk dan beratnya berbeda di tiap
+perangkat — dan warnanya tidak bisa diikutkan tema. Dua belas ikon sekarang
+digambar sebagai SVG dengan satu berat garis, dan ikut berwarna bersama label
+tab yang sedang aktif.
+
+### Untuk yang membaca kodenya
+
+Tata letak Android hidup di `apps/web/src/platform/` (`TabBawah`, `BerandaApp`,
+`JelajahiApp`, `UbinKomik`) di balik `IS_APP`, jadi Rollup membuangnya utuh dari
+bundel web. Pemisahannya diperiksa dari dua arah pada tiap build: penanda khas
+Android harus nol di bundel web, dan penanda khas web harus nol di bundel
+Android.
+
+---
+
 ## 0.2.0
 
 Rilis tampilan. Tidak ada fitur yang hilang dan tidak ada yang perlu diunduh

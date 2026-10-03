@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { EmptyState } from '../components/Common/index.jsx';
@@ -14,6 +14,7 @@ import {
 import SampulLokal from '../offline/SampulLokal.jsx';
 import { batalkanUnduhan, kosongkanAntrean } from '../offline/unduh.js';
 import { formatBytes, formatChapterNumber, formatRelativeTime } from '../utils/format.js';
+import Ikon from '../components/Common/Ikon.jsx';
 
 /**
  * Rak komik yang benar-benar ada di HP ini.
@@ -88,10 +89,127 @@ const KartuUnduhan = () => {
   );
 };
 
+/** Berapa chapter yang ditampilkan sebelum tombol "tampilkan semua". */
+const BATAS_TAMPIL = 25;
+
+/**
+ * Satu komik di rak, TERLIPAT secara bawaan.
+ *
+ * Dulu tiap komik merender seluruh chapternya sekaligus. Untuk koleksi yang
+ * sehat itu berarti ribuan baris sekaligus di layar 360px — satu komik 180
+ * chapter saja sudah membuat halaman ini mustahil digulir sampai komik kedua,
+ * dan React harus menjaga seluruh baris itu hidup walau tak satu pun terlihat.
+ *
+ * Satu yang terbuka pada satu waktu, seperti pemilih chapter di reader: dua
+ * daftar panjang terbuka berjauhan membuat tombol hapus mudah ditekan pada
+ * komik yang salah.
+ */
+const RakKomik = ({ komik, terbuka, onToggle, onHapusKomik, onHapusChapter }) => {
+  const [semua, setSemua] = useState(false);
+  const tampil = semua ? komik.chapter : komik.chapter.slice(0, BATAS_TAMPIL);
+  const sisa = komik.chapter.length - tampil.length;
+
+  return (
+    <section className="card overflow-hidden">
+      {/* Seluruh baris kepala jadi sasaran ketuk, bukan ikon panahnya saja:
+          di 360px panah 16px adalah sasaran yang paling sering meleset. */}
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={terbuka}
+        className="flex w-full items-center gap-3 p-3 text-left transition-colors active:bg-surface-soft"
+      >
+        <SampulLokal sampul={komik.sampul} judul={komik.judul} />
+        <span className="min-w-0 flex-1">
+          <span className="line-clamp-2 text-sm font-bold leading-snug">{komik.judul}</span>
+          <span className="mt-0.5 block text-xs text-txt-2">
+            {komik.chapter.length} chapter · {formatBytes(komik.bytes)}
+          </span>
+        </span>
+        <span className={`flex-none text-txt-2 transition-transform ${terbuka ? 'rotate-180' : ''}`}>
+          <Ikon nama="chevron" />
+        </span>
+      </button>
+
+      {terbuka && (
+        <div className="border-t border-line px-3 pb-3">
+          {/*
+            Komik sumber mengantar ke halaman SERINYA di situs asal, bukan ke
+            /comic/:slug. Halaman itu hidup dari koleksi server rumah, dan komik
+            yang diunduh langsung ke HP memang tidak pernah ada di sana. Halaman
+            serinya jauh lebih berguna: di situlah chapter berikutnya dipilih.
+          */}
+          <Link
+            to={
+              komik.sumber?.urlSeri
+                ? `/sumber/seri?url=${encodeURIComponent(komik.sumber.urlSeri)}`
+                : `/comic/${komik.slug}`
+            }
+            className="mt-3 flex items-center gap-2 text-xs font-semibold text-primary"
+          >
+            Buka halaman komik →
+          </Link>
+
+          <ul className="mt-2 flex flex-col">
+            {tampil.map((entri) => (
+              <li key={entri.id} className="flex items-center gap-1 border-b border-line last:border-0">
+                <Link
+                  to={`/read/${entri.id}`}
+                  className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-2 active:bg-surface-soft"
+                >
+                  <span className="flex-none font-mono text-xs text-txt-2">
+                    Ch {formatChapterNumber(entri.nomor)}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-xs">
+                    {entri.judul || `${entri.jumlahHalaman} halaman`}
+                  </span>
+                  <span className="flex-none text-[11px] text-txt-2">{formatBytes(entri.bytes)}</span>
+                </Link>
+                <button
+                  type="button"
+                  className="flex-none rounded-lg px-2 py-2 text-danger active:bg-surface-soft"
+                  onClick={() => onHapusChapter(entri)}
+                  aria-label={`Hapus chapter ${formatChapterNumber(entri.nomor)} dari HP`}
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {sisa > 0 && (
+            <button type="button" className="btn-ghost mt-2 w-full py-1.5 text-xs" onClick={() => setSemua(true)}>
+              Tampilkan {sisa} chapter lainnya
+            </button>
+          )}
+
+          {/* Hapus-semua dipindah KE DALAM panel, jauh dari judul. Dulu ia duduk
+              tepat di sebelah judul di baris yang sama — tombol penghapus
+              permanen, selebar jempol, di tempat yang disentuh orang saat
+              hendak membuka komiknya. */}
+          <button
+            type="button"
+            className="btn-ghost mt-3 w-full py-1.5 text-xs text-danger"
+            onClick={onHapusKomik}
+          >
+            Hapus semua chapter komik ini
+          </button>
+
+          <p className="mt-2 text-center text-[11px] text-txt-2">
+            Terakhir disimpan {formatRelativeTime(komik.disimpanPada)}
+          </p>
+        </div>
+      )}
+    </section>
+  );
+};
+
 export const Offline = () => {
   const dispatch = useDispatch();
   const indeks = useIndeksOffline();
   const { terhubung, sedangMemeriksa } = useTerhubung();
+
+  const [terbuka, setTerbuka] = useState(null);
 
   const daftar = useMemo(() => komikTersimpan(indeks), [indeks]);
   const total = useMemo(() => totalBytesTersimpan(indeks), [indeks]);
@@ -140,78 +258,16 @@ export const Offline = () => {
           }
         />
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2.5">
           {daftar.map((komik) => (
-            <section key={komik.id} className="card p-4">
-              <div className="flex items-center gap-3">
-                <SampulLokal sampul={komik.sampul} judul={komik.judul} />
-                <div className="min-w-0 flex-1">
-                  {/*
-                    Komik sumber mengantar ke halaman SERINYA di situs asal, bukan
-                    ke /comic/:slug. Halaman itu hidup dari koleksi server rumah,
-                    dan komik yang diunduh langsung ke HP memang tidak pernah ada
-                    di sana — tautannya akan mendarat di "tidak ditemukan", atau
-                    (karena slugnya dibentuk "sumber/<id>") memutar kembali ke
-                    rak ini. Halaman serinya jauh lebih berguna: di situlah
-                    chapter berikutnya bisa dipilih dan disimpan.
-                  */}
-                  <Link
-                    to={
-                      komik.sumber?.urlSeri
-                        ? `/sumber/seri?url=${encodeURIComponent(komik.sumber.urlSeri)}`
-                        : `/comic/${komik.slug}`
-                    }
-                    className="block truncate text-sm font-bold"
-                  >
-                    {komik.judul}
-                  </Link>
-                  <p className="text-xs opacity-60">
-                    {komik.chapter.length} chapter · {formatBytes(komik.bytes)}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="btn-ghost flex-none px-2 py-1 text-xs text-danger"
-                  onClick={() => hapusKomik(komik)}
-                  aria-label={`Hapus semua chapter ${komik.judul} dari HP`}
-                >
-                  Hapus semua
-                </button>
-              </div>
-
-              <ul className="mt-3 flex flex-col gap-1">
-                {komik.chapter.map((entri) => (
-                  <li key={entri.id} className="flex items-center gap-2">
-                    <Link
-                      to={`/read/${entri.id}`}
-                      className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-1 hover:bg-surface-soft"
-                    >
-                      <span className="flex-none font-mono text-xs opacity-60">
-                        Ch {formatChapterNumber(entri.nomor)}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-xs">
-                        {entri.judul || `${entri.jumlahHalaman} halaman`}
-                      </span>
-                      <span className="flex-none text-[11px] opacity-50">
-                        {formatBytes(entri.bytes)}
-                      </span>
-                    </Link>
-                    <button
-                      type="button"
-                      className="btn-ghost flex-none px-2 py-1 text-xs text-danger"
-                      onClick={() => hapusChapter(entri)}
-                      aria-label={`Hapus chapter ${formatChapterNumber(entri.nomor)} dari HP`}
-                    >
-                      ✕
-                    </button>
-                  </li>
-                ))}
-              </ul>
-
-              <p className="mt-2 text-[11px] opacity-40">
-                Terakhir disimpan {formatRelativeTime(komik.disimpanPada)}
-              </p>
-            </section>
+            <RakKomik
+              key={komik.id}
+              komik={komik}
+              terbuka={terbuka === komik.id}
+              onToggle={() => setTerbuka((kini) => (kini === komik.id ? null : komik.id))}
+              onHapusKomik={() => hapusKomik(komik)}
+              onHapusChapter={hapusChapter}
+            />
           ))}
         </div>
       )}

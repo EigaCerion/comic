@@ -8,7 +8,7 @@ import { ComicCard } from '../components/ComicList/ComicCard.jsx';
 import { EmptyState, ErrorState, Spinner } from '../components/Common/index.jsx';
 import { formatBytes } from '../utils/format.js';
 import { IS_APP } from '../platform/index.js';
-import RakBeranda from '../offline/RakBeranda.jsx';
+import BerandaApp from '../platform/BerandaApp.jsx';
 
 const Hero = ({ stats }) => (
   /* Hijau Konoha diganti lavender aksi utama. Gradiennya sengaja pendek — dua
@@ -97,14 +97,42 @@ export const Home = () => {
   const isEmptyLibrary =
     !latestQuery.isLoading && !latestQuery.isError && (latestQuery.data?.pagination?.total ?? 0) === 0;
 
+  /*
+   * Build android memakai susunan sendiri, bukan grid yang sama diperkecil.
+   *
+   * Query-nya PERSIS yang sama — diteruskan apa adanya ke bawah — jadi yang
+   * berbeda hanya tata letaknya, bukan beban servernya. Ekspresi ini runtuh
+   * jadi `false` pada build web, dan Rollup membuang BerandaApp beserta seluruh
+   * cabang modulnya (termasuk rak offline yang menyeret plugin Capacitor).
+   */
+  if (IS_APP) {
+    return (
+      <div>
+        {isEmptyLibrary && (
+          <EmptyState
+            icon="📚"
+            title="Perpustakaan masih kosong"
+            description="Cari komik di Situs Sumber lalu simpan chapternya ke HP, atau sambungkan ke server rumah."
+            action={
+              <Link to="/sumber" className="btn-accent mt-2">
+                Buka situs sumber
+              </Link>
+            }
+          />
+        )}
+        <BerandaApp
+          continueQuery={continueQuery}
+          latestQuery={latestQuery}
+          favoritesQuery={favoritesQuery}
+          kosong={isEmptyLibrary}
+        />
+      </div>
+    );
+  }
+
   return (
     <div>
       <Hero stats={stats} />
-
-      {/* Build android saja: komik yang benar-benar ada di HP ini. Ditaruh paling
-          atas karena ia satu-satunya bagian beranda yang tetap berarti saat
-          server rumah mati. */}
-      {IS_APP && <RakBeranda />}
 
       {isEmptyLibrary && (
         <div className="mt-8">
