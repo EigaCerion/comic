@@ -48,6 +48,7 @@ public class MainActivity extends BridgeActivity {
         // jembatannya dan mengunci daftar plugin. Didaftarkan sesudahnya, plugin
         // ini ada di APK tapi tidak pernah bisa dipanggil dari JavaScript.
         registerPlugin(BukaDiLuar.class);
+        registerPlugin(UnduhSistem.class);
         super.onCreate(savedInstanceState);
     }
 }

@@ -36,6 +36,9 @@ import { formatRelativeTime } from '../utils/format.js';
  */
 const waktuRelatif = (ms) => (Number.isFinite(ms) ? formatRelativeTime(new Date(ms).toISOString()) : 'belum pernah');
 
+/** Byte jadi MB satu desimal — satuan yang dipakai orang untuk berkas 30-an MB. */
+const mb = (byte) => `${(Number(byte || 0) / 1048576).toFixed(1)} MB`;
+
 const Baris = ({ label, nilai }) => (
   <div className="flex items-center justify-between border-b border-line py-2 text-sm last:border-0">
     <span className="opacity-60">{label}</span>
@@ -54,8 +57,21 @@ export const KartuPembaruan = () => {
     galat,
     adaPembaruan,
     sedangDiunduh,
+    galatUnduh,
+    namaBerkas,
+    unduhanId,
+    unduhanKeadaan,
+    unduhanTerunduh,
+    unduhanTotal,
+    unduhanAktif,
+    unduhanSelesai,
+    unduhanRusak,
+    unduhanGagal,
+    persenUnduh,
     cekPembaruan,
     mulaiUnduhPembaruan,
+    bukaUnduhan,
+    batalkanUnduhanPembaruan,
   } = usePembaruan();
 
   // Enam keadaan yang benar-benar berbeda, dan hanya SATU di antaranya boleh
@@ -111,37 +127,91 @@ export const KartuPembaruan = () => {
         <button type="button" className="btn-ghost flex-1" onClick={() => cekPembaruan()} disabled={sedangMemeriksa}>
           {sedangMemeriksa ? 'Memeriksa…' : 'Cek pembaruan'}
         </button>
-        {adaPembaruan && urlUnduh && (
+        {adaPembaruan && urlUnduh && !unduhanAktif && (
           <button type="button" className="btn-accent flex-1 text-center" onClick={() => mulaiUnduhPembaruan()}>
-            {sedangDiunduh ? 'Buka unduhan lagi' : `Unduh ${versiRilis}`}
+            {unduhanSelesai ? 'Unduh ulang' : unduhanRusak || unduhanGagal ? 'Coba lagi' : `Unduh ${versiRilis}`}
           </button>
         )}
       </div>
 
-      {/* Petunjuk baru muncul SETELAH browser benar-benar terbuka. Ditulis
-          sebagai langkah bernomor karena tiga langkah terakhirnya memang tidak
-          bisa ditebak orang yang belum pernah memasang APK: pemasangannya tidak
-          dimulai dari aplikasi ini, melainkan dari notifikasi unduhan, dan
-          Android akan menyela sekali dengan permintaan izin. */}
-      {sedangDiunduh && (
+      {/* Galat UNDUHAN, bukan galat pemeriksaan — kalimatnya berdiri sendiri
+          tanpa embel-embel soal angka versi di atas. Ini juga yang menjamin
+          tombol Unduh tidak pernah lagi bisa ditekan tanpa menghasilkan apa
+          pun: setiap jalan buntu di baliknya berakhir di kotak ini. */}
+      {galatUnduh && (
+        <p className="mt-3 rounded-lg bg-danger/10 px-3 py-2 text-xs text-danger">{galatUnduh}</p>
+      )}
+
+      {/* Unduhan SEDANG berjalan. Bilah progresnya bukan hiasan: unduhan 31 MB
+          tanpa angka yang bergerak adalah unduhan yang disangka macet, lalu
+          ditekan lagi — persis kebiasaan yang membuat berkas separuh jadi
+          menumpuk di folder Download. */}
+      {unduhanAktif && (
+        <div className="mt-3 rounded-lg bg-primary/10 px-3 py-2 text-xs">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-semibold text-primary">
+              {unduhanKeadaan === 'jeda' ? 'Unduhan dijeda sistem' : 'Mengunduh di latar belakang'}
+            </p>
+            <button type="button" className="font-semibold underline opacity-70" onClick={() => batalkanUnduhanPembaruan()}>
+              Batalkan
+            </button>
+          </div>
+
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-primary/20">
+            <div
+              className="h-full rounded-full bg-primary transition-[width] duration-500"
+              style={{ width: persenUnduh == null ? '100%' : `${persenUnduh}%` }}
+            />
+          </div>
+
+          <p className="mt-1.5 tabular-nums opacity-70">
+            {persenUnduh == null ? 'Besarnya belum diketahui' : `${persenUnduh}%`}
+            {unduhanTotal > 0 && ` · ${mb(unduhanTerunduh)} dari ${mb(unduhanTotal)}`}
+          </p>
+
+          <p className="mt-2 opacity-70">
+            Unduhan ini milik sistem, bukan aplikasi ini — ia tetap berjalan meski NaruReader ditutup.
+          </p>
+        </div>
+      )}
+
+      {/* Selesai DAN ukurannya cocok. Pemasangannya tetap dimulai orangnya
+          sendiri dari daftar unduhan: memasang dari dalam aplikasi menuntut izin
+          REQUEST_INSTALL_PACKAGES, persis izin yang membuat aplikasi hasil
+          sideload dicurigai Play Protect. */}
+      {unduhanSelesai && (
+        <div className="mt-3 rounded-lg bg-success/10 px-3 py-2 text-xs">
+          <p className="font-semibold text-success">Unduhan selesai dan ukurannya cocok</p>
+          <ol className="mt-1 list-decimal space-y-1 pl-4 opacity-70">
+            <li>Ketuk tombol di bawah, atau buka notifikasi unduhan selesai.</li>
+            <li>Ketuk {namaBerkas ?? `NaruReader-${versiRilis}.apk`}, izinkan pemasangan dari sumber itu, lalu Pasang.</li>
+          </ol>
+          <p className="mt-2 opacity-70">
+            Komik yang sudah tersimpan di HP tidak ikut terhapus dan tidak perlu diunduh ulang.
+          </p>
+          <button type="button" className="btn-accent mt-2 w-full" onClick={() => bukaUnduhan()}>
+            Buka unduhan
+          </button>
+        </div>
+      )}
+
+      {/* Jalur cadangan: unduhan diserahkan ke browser karena unduhan sistem
+          tidak bisa dipakai. Petunjuknya berbeda, jadi kalimatnya juga. */}
+      {sedangDiunduh && !unduhanAktif && !unduhanSelesai && !unduhanRusak && unduhanId == null && (
         <div className="mt-3 rounded-lg bg-primary/10 px-3 py-2 text-xs">
           <p className="font-semibold text-primary">Unduhan berjalan di browser</p>
           <ol className="mt-1 list-decimal space-y-1 pl-4 opacity-70">
             <li>Biarkan browser menyelesaikannya. Aplikasi ini boleh ditutup.</li>
             <li>Buka notifikasi unduhan selesai, atau menu Unduhan di browser.</li>
-            <li>
-              Ketuk NaruReader-{versiRilis}.apk, izinkan pemasangan dari sumber itu, lalu Pasang.
-            </li>
+            <li>Ketuk NaruReader-{versiRilis}.apk, izinkan pemasangan dari sumber itu, lalu Pasang.</li>
           </ol>
-          <p className="mt-2 opacity-70">
-            Komik yang sudah tersimpan di HP tidak ikut terhapus dan tidak perlu diunduh ulang.
-          </p>
         </div>
       )}
 
       <p className="mt-3 text-xs opacity-50">
-        Diperiksa otomatis paling sering sekali sehari. Berkasnya diunduh browser perangkat seperti
-        berkas biasa; pemasangannya dimulai dari notifikasi unduhan.
+        Diperiksa otomatis paling sering sekali sehari. Berkasnya diunduh layanan unduhan Android ke
+        folder Download, dan ukurannya dicocokkan dengan yang disebut GitHub sebelum Anda diminta
+        memasangnya.
       </p>
     </section>
   );

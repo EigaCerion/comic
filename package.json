@@ -1,6 +1,6 @@
 {
   "name": "naruread",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "NaruReader - aplikasi pembaca komik lokal (Phase 2 MVP)",
   "workspaces": [

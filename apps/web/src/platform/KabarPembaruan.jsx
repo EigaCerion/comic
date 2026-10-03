@@ -17,8 +17,20 @@ import { usePembaruan } from './pembaruan.js';
  * masalah yang sama.
  */
 export const KabarPembaruan = () => {
-  const { tampilkanKabar, versiRilis, catatan, namaRilis, sedangDiunduh, abaikanPembaruan, mulaiUnduhPembaruan } =
-    usePembaruan();
+  const {
+    tampilkanKabar,
+    versiRilis,
+    catatan,
+    namaRilis,
+    sedangDiunduh,
+    galatUnduh,
+    unduhanAktif,
+    unduhanSelesai,
+    persenUnduh,
+    abaikanPembaruan,
+    mulaiUnduhPembaruan,
+    bukaUnduhan,
+  } = usePembaruan();
   const [catatanTerbuka, setCatatanTerbuka] = useState(false);
 
   if (!tampilkanKabar) return null;
@@ -31,21 +43,30 @@ export const KabarPembaruan = () => {
           {/* Setelah unduhannya dibuka, kalimatnya berubah jadi langkah
               BERIKUTNYA. Pita yang tetap berbunyi "sudah tersedia" membuat orang
               menekan Unduh berulang kali dan menumpuk berkas yang sama. */}
-          {sedangDiunduh
-            ? 'sedang diunduh di browser — pasang dari notifikasi unduhan setelah selesai.'
-            : `sudah tersedia${namaRilis ? ` — ${namaRilis}` : ''}.`}
+          {unduhanAktif
+            ? `sedang diunduh${persenUnduh == null ? '' : ` — ${persenUnduh}%`}. Boleh ditinggal; unduhannya milik sistem.`
+            : unduhanSelesai
+              ? 'sudah terunduh dan ukurannya cocok — tinggal dipasang.'
+              : galatUnduh
+                ? galatUnduh
+                : sedangDiunduh
+                  ? 'sedang diunduh di browser — pasang dari notifikasi unduhan setelah selesai.'
+                  : `sudah tersedia${namaRilis ? ` — ${namaRilis}` : ''}.`}
         </span>
 
-        {/* Lihat penjelasan panjang di KartuPembaruan.jsx: tombol, bukan <a>,
-            supaya browsernya berdiri sebagai tugas tersendiri dan unduhannya
-            tidak ikut terdorong ke belakang saat orangnya kembali ke sini. */}
-        <button
-          type="button"
-          className="flex-none font-semibold underline"
-          onClick={() => mulaiUnduhPembaruan()}
-        >
-          {sedangDiunduh ? 'Buka lagi' : 'Unduh'}
-        </button>
+        {/* Saat unduhannya sedang berjalan tidak ada tombol aksi sama sekali:
+            satu-satunya hal yang bisa dilakukan orang di detik itu adalah
+            menunggu, dan tombol "Unduh" yang masih bisa ditekan hanya
+            menghasilkan berkas kedua yang sama. */}
+        {!unduhanAktif && (
+          <button
+            type="button"
+            className="flex-none font-semibold underline"
+            onClick={() => (unduhanSelesai ? bukaUnduhan() : mulaiUnduhPembaruan())}
+          >
+            {unduhanSelesai ? 'Pasang' : galatUnduh ? 'Coba lagi' : 'Unduh'}
+          </button>
+        )}
         <button type="button" className="flex-none font-semibold underline" onClick={() => abaikanPembaruan()}>
           Nanti
         </button>

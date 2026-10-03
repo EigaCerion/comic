@@ -9,6 +9,83 @@ dengan `package.json` akar). Membangun APK rilis: `apps/web/scripts/build-androi
 
 ---
 
+## 0.3.1
+
+Rilis perbaikan. Satu bug yang membuat pembaruan dalam aplikasi tidak bisa
+dipakai sama sekali, dan penggantian cara mengunduhnya supaya kegagalan yang
+sudah pernah terjadi tidak bisa terulang.
+
+> **Pasang menimpa 0.3.0.** Tidak perlu mencopot, dan chapter yang sudah
+> tersimpan di HP tetap utuh.
+
+### Tombol "Unduh" yang ditekan dan tidak melakukan apa-apa
+
+Sejak 0.2.0, menekan Unduh di kartu "Versi aplikasi" tidak menghasilkan apa pun:
+browser tidak terbuka, tidak ada pesan galat, tombolnya pun tidak berubah.
+Artinya pembaruan dalam aplikasi tidak pernah bisa dipakai di 0.2.0 maupun
+0.3.0 — satu-satunya jalan adalah mengunduh APK-nya sendiri dari GitHub.
+
+Sebabnya satu baris. `muatPlugin()` mengembalikan proxy plugin Capacitor apa
+adanya dari fungsi `async`. Proxy itu menjawab SETIAP akses properti dengan
+sebuah fungsi — termasuk `.then` — jadi JavaScript menyangkanya sebuah promise
+lalu memanggil `plugin.then(resolve, reject)`. Panggilan itu diteruskan ke
+Android sebagai metode plugin bernama "then", dijawab «"BukaDiLuar.then()" is
+not implemented on android», dan penolakannya jatuh di rantai promise
+tersendiri yang tidak dipegang siapa pun. Akibatnya `await`-nya menggantung
+selamanya: bukan berhasil, bukan gagal, hanya diam — dan `try/catch` di
+sekelilingnya tidak pernah menyala.
+
+Aturan ini sebenarnya sudah tertulis di `platform/server.js` dan dipatuhi enam
+pemuat plugin lain di proyek ini; `bukaLuar.js` satu-satunya yang melanggarnya.
+Sekarang proxy-nya dibungkus objek biasa seperti yang lain.
+
+### Pembaruan diunduh layanan unduhan Android, bukan browser
+
+Dua kegagalan nyata sudah tercatat dari jalur browser, dan keduanya berakhir di
+tempat yang sama — pembaruan yang tidak jadi terpasang:
+
+* Tautan `github.com` diklaim **aplikasi GitHub** lewat app link, jadi yang
+  mengunduh adalah pengunduh internal aplikasi itu. Ketika NaruReader dibuka
+  kembali, jendela yang sedang mengunduh terdorong ke latar belakang dan
+  Android membekukan kerja jaringannya. Yang terlihat: unduhan berhenti di 99%.
+* Lewat Chrome, unduhan yang terputus lalu dilanjutkan menghasilkan berkas yang
+  **ukurannya tepat sampai byte terakhir tetapi isinya rusak**. Pemasang Android
+  menolaknya dengan "paket tampaknya tidak valid" — kalimat yang menunjuk ke
+  APK, padahal yang rusak berkas unduhannya.
+
+Sekarang unduhannya dikerjakan DownloadManager milik Android. Pekerjaan itu
+milik sistem, bukan milik proses aplikasi: ia tidak bisa terdorong ke latar
+belakang, ia tetap berjalan meski NaruReader ditutup, ia punya notifikasi
+progres sendiri, dan ia menyambung lagi saat jaringan putus-nyambung. Tidak ada
+izin baru — DownloadManager menulis ke folder Download tanpa izin penyimpanan
+sejak Android 10.
+
+Pemasangannya tetap dimulai Anda sendiri dari notifikasi atau tombol "Buka
+unduhan". Memasang dari dalam aplikasi menuntut izin `REQUEST_INSTALL_PACKAGES`,
+persis izin yang membuat aplikasi hasil sideload dicurigai Play Protect.
+
+### Ukuran berkas dicocokkan sebelum Anda diminta memasang
+
+Jawaban GitHub menyebut ukuran aset sampai byte. Setelah unduhan selesai,
+angkanya dicocokkan; yang tidak cocok ditandai rusak berikut kedua angkanya, dan
+tombol pasangnya tidak muncul. Berkas rusak yang memicu "paket tampaknya tidak
+valid" akan tertangkap di sini.
+
+Perlu disebut jujur: ukuran yang cocok **tidak** membuktikan isinya utuh — justru
+kejadian di atas contohnya. Yang pasti adalah kebalikannya, ukuran yang meleset
+sudah pasti berkas yang tidak utuh.
+
+### Kegagalan tidak bisa diam lagi
+
+Setiap panggilan plugin dari lapisan pembaruan diberi batas waktu 8 detik, dan
+setiap jalan buntu menulis kalimatnya sendiri ke layar. Galat unduhan juga
+dipisahkan dari galat pemeriksaan — sebelumnya keduanya berbagi satu bidang,
+sehingga berkas rusak dilaporkan dengan kalimat tentang hasil pemeriksaan
+terakhir. Bentuk kegagalan "ditekan, lalu tidak ada apa-apa" tidak boleh ada
+lagi, apa pun sebabnya nanti.
+
+---
+
 ## 0.3.0
 
 Rilis tata letak, dan seluruhnya hanya menyentuh aplikasi Android. Tampilan web

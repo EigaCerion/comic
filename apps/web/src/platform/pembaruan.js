@@ -46,6 +46,15 @@ export const KUNCI_ABAIKAN = 'naruread:pembaruan-diabaikan';
  */
 export const KUNCI_UNDUH = 'naruread:pembaruan-diunduh';
 
+/**
+ * Nomor pekerjaan DownloadManager yang sedang dilacak, beserta versinya.
+ *
+ * Kunci TERSENDIRI, bukan menumpang KUNCI_UNDUH: nilai di sana sudah terlanjur
+ * berupa nomor versi apa adanya di pemasangan yang ada sekarang, dan mengubah
+ * bentuknya berarti aplikasi lama membaca JSON sebagai nomor versi.
+ */
+export const KUNCI_UNDUHAN = 'naruread:pembaruan-unduhan';
+
 const SEHARI_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -142,6 +151,22 @@ const urlUnduhAman = (mentah) => {
 };
 
 /**
+ * Nama berkas yang aman dipakai sebagai nama berkas di folder Download.
+ *
+ * Diperiksa dengan disiplin yang sama seperti urlUnduhAman: nilainya berasal
+ * dari jawaban JSON milik GitHub ATAU dari Preferences yang bisa disunting di
+ * perangkat yang di-root, dan ia diteruskan ke DownloadManager sebagai nama
+ * berkas. Pemeriksaan kembarannya ada di UnduhSistem.java — pemeriksaan yang
+ * hanya hidup di satu lapisan bukan pemeriksaan.
+ */
+const namaBerkasAman = (mentah) => {
+  const nama = String(mentah ?? '').trim();
+  if (!nama || nama.length > 120) return null;
+  if (nama.includes('/') || nama.includes('\\') || nama.includes('..')) return null;
+  return POLA_ASET.test(nama) ? nama : null;
+};
+
+/**
  * Nama berkas aset: NaruReader-<versi>.apk
  *
  * INILAH sumber versi yang bisa dipercaya di repositori ini, bukan tag-nya.
@@ -166,7 +191,13 @@ const asetTerbaru = (rilis) => {
     // Yang dipakai versi tertingginya, bukan yang pertama ditemukan: urutan
     // assets di jawaban GitHub adalah urutan unggah, bukan urutan versi.
     if (!terbaik || bandingVersi(cocok[1], terbaik.versi) === 1) {
-      terbaik = { versi: cocok[1], url, nama: aset.name };
+      // ukuran dipakai untuk MEMBUKTIKAN unduhannya utuh, bukan sekadar hiasan
+      // di layar. Unduhan yang terputus lalu dilanjutkan bisa menghasilkan
+      // berkas yang panjangnya tepat tapi isinya rusak; yang tidak pernah bisa
+      // adalah panjang yang MELESET. Jadi ukuran yang tidak cocok sudah pasti
+      // berkas rusak, dan itu yang ditahan sebelum orangnya diminta memasang.
+      const ukuran = Number(aset?.size);
+      terbaik = { versi: cocok[1], url, nama: aset.name, ukuran: Number.isFinite(ukuran) && ukuran > 0 ? ukuran : 0 };
     }
   }
   return terbaik;
@@ -200,6 +231,7 @@ const bacaRilis = (rilis) => {
     versi,
     urlUnduh: aset?.url ?? null,
     namaBerkas: aset?.nama ?? null,
+    ukuranUnduh: aset?.ukuran ?? 0,
     nama: typeof rilis.name === 'string' ? rilis.name.trim().slice(0, 120) : null,
     catatan: catatan ? catatan.slice(0, BATAS_CATATAN) : null,
   };
@@ -342,6 +374,10 @@ const keadaanAwal = {
   versiTerpasang: null,
   versiRilis: null,
   urlUnduh: null,
+  /** Nama berkas aset, dipakai sebagai nama berkas unduhan di folder Download. */
+  namaBerkas: null,
+  /** Ukuran aset menurut GitHub; 0 berarti tidak diketahui. */
+  ukuranUnduh: 0,
   namaRilis: null,
   catatan: null,
   /** Kapan pemeriksaan terakhir BERHASIL (ms epoch). */
@@ -351,8 +387,35 @@ const keadaanAwal = {
   sedangMemeriksa: false,
   galat: null,
   diabaikan: null,
-  /** Versi yang unduhannya sudah dibuka di browser, atau null. */
+  /** Versi yang unduhannya sudah dimulai, atau null. */
   unduhDimulai: null,
+
+  /*
+   * Unduhan sistem (DownloadManager).
+   *
+   * Dipisah dari unduhDimulai karena keduanya menjawab pertanyaan berbeda:
+   * unduhDimulai bertahan di Preferences dan berarti "orang ini sudah menekan
+   * Unduh untuk versi itu", sementara bidang di bawah adalah keadaan SAAT INI
+   * dari satu pekerjaan unduh yang sedang berjalan — hidup selama id-nya masih
+   * dikenali DownloadManager, termasuk sesudah aplikasi ditutup dan dibuka lagi.
+   */
+  /*
+   * Galat UNDUHAN dipisah dari galat PEMERIKSAAN.
+   *
+   * Keduanya pernah menumpang satu bidang, dan hasilnya kalimat yang salah:
+   * kotak galat pemeriksaan berbunyi "angka di atas adalah hasil pemeriksaan
+   * terakhir yang berhasil" — benar untuk GitHub yang tak terjangkau, tapi tidak
+   * masuk akal untuk berkas unduhan yang ukurannya tidak cocok.
+   */
+  galatUnduh: null,
+  /** id DownloadManager, atau null kalau tidak ada unduhan yang dilacak. */
+  unduhanId: null,
+  /** "menunggu" | "berjalan" | "jeda" | "selesai" | "gagal" | "hilang" | "rusak" */
+  unduhanKeadaan: null,
+  unduhanTerunduh: 0,
+  unduhanTotal: 0,
+  /** Terisi hanya kalau unduhannya selesai DAN ukurannya cocok. */
+  unduhanBerkas: null,
 };
 
 let keadaan = keadaanAwal;
@@ -425,6 +488,8 @@ const jalankanCek = () => {
       const isi = {
         versiRilis: hasil.versi,
         urlUnduh: hasil.urlUnduh,
+        namaBerkas: hasil.namaBerkas,
+        ukuranUnduh: hasil.ukuranUnduh,
         namaRilis: hasil.nama,
         catatan: hasil.catatan,
         diperiksaPada: sekarang,
@@ -594,6 +659,8 @@ export const siapkanPembaruan = () => {
             // di-root, dan pemeriksaan yang hanya berlaku sekali bukan
             // pemeriksaan.
             urlUnduh: urlUnduhAman(isi?.urlUnduh),
+            namaBerkas: namaBerkasAman(isi?.namaBerkas),
+            ukuranUnduh: Number.isFinite(isi?.ukuranUnduh) && isi.ukuranUnduh > 0 ? isi.ukuranUnduh : 0,
             namaRilis: typeof isi?.namaRilis === 'string' ? isi.namaRilis : null,
             catatan: typeof isi?.catatan === 'string' ? isi.catatan : null,
             diperiksaPada: Number.isFinite(isi?.diperiksaPada) ? isi.diperiksaPada : null,
@@ -604,6 +671,7 @@ export const siapkanPembaruan = () => {
     // Pemicu resume dipasang LEBIH DULU: pemeriksaan di bawah bisa memakan
     // sepuluh detik penuh (batas waktu permintaan), dan aplikasi yang berpindah
     // ke belakang lalu kembali di sela itu tidak boleh melewatkan pemicunya.
+    await lanjutkanPemantauan();
     await pasangPemicuResume();
     await cekKalauSudahLewatSehari();
   })();
@@ -611,8 +679,156 @@ export const siapkanPembaruan = () => {
   return penyiapan;
 };
 
+/* ── Unduhan ────────────────────────────────────────────────────────── */
+
 /**
- * Buka unduhan APK versi terbaru di browser perangkat, lalu ingat bahwa itu
+ * Batas waktu untuk SETIAP panggilan plugin dari berkas ini.
+ *
+ * Alasannya bukan kehati-hatian umum, melainkan satu bug yang sudah pernah
+ * terjadi dan memakan waktu lama untuk ditemukan: proxy plugin Capacitor
+ * menjawab setiap akses properti dengan fungsi, termasuk `.then`, sehingga
+ * mengembalikannya dari fungsi async membuat JavaScript memanggil `.then()`
+ * sebagai metode plugin. Panggilan itu ditolak di rantai promise TERSENDIRI,
+ * dan `await`-nya menggantung selamanya — tanpa galat, tanpa jejak, tanpa satu
+ * pun perubahan di layar. Yang terlihat orang: tombol Unduh yang ditekan dan
+ * tidak melakukan apa-apa.
+ *
+ * Penyebab itu sudah diperbaiki di bukaLuar.js dan unduhSistem.js. Batas waktu
+ * ini menjaga agar BENTUK kegagalan seperti itu — apa pun sebabnya nanti —
+ * selalu berakhir sebagai kalimat yang terbaca, bukan sebagai diam.
+ */
+const BATAS_PLUGIN_MS = 8000;
+
+const dalamBatas = (janji, pekerjaan) =>
+  Promise.race([
+    janji,
+    new Promise((_, tolak) =>
+      setTimeout(() => tolak(new Error(`${pekerjaan} tidak menjawab dalam ${BATAS_PLUGIN_MS / 1000} detik`)), BATAS_PLUGIN_MS),
+    ),
+  ]);
+
+const simpanPenandaUnduh = async (versi, id) => {
+  try {
+    const { Preferences } = await prefs();
+    if (versi) await Preferences.set({ key: KUNCI_UNDUH, value: versi });
+    else await Preferences.remove({ key: KUNCI_UNDUH });
+
+    if (id != null && versi) await Preferences.set({ key: KUNCI_UNDUHAN, value: JSON.stringify({ versi, id }) });
+    else await Preferences.remove({ key: KUNCI_UNDUHAN });
+  } catch {
+    /* tidak bertahan sampai aplikasi dibuka lagi; sesi ini tetap ingat */
+  }
+};
+
+/*
+ * Pemantauan unduhan.
+ *
+ * Satu pemantau saja yang boleh hidup: tombol boleh ditekan berkali-kali, dan
+ * dua gelung yang menanyai DownloadManager untuk id yang sama hanya menggandakan
+ * pekerjaan sambil saling menimpa hasilnya.
+ */
+let pemantau = null;
+
+const JEDA_PANTAU_MS = 1200;
+
+const pantauUnduhan = (id) => {
+  if (pemantau) clearTimeout(pemantau);
+
+  const putaran = async () => {
+    pemantau = null;
+    if (keadaan.unduhanId !== id) return; // sudah dibatalkan atau diganti
+
+    let status;
+    try {
+      const { statusUnduhan } = await import('./unduhSistem.js');
+      status = await dalamBatas(statusUnduhan(id), 'Membaca keadaan unduhan');
+    } catch (galat) {
+      siarkan({ unduhanKeadaan: 'gagal', galatUnduh: galat?.message || 'Keadaan unduhan tidak terbaca' });
+      return;
+    }
+
+    if (keadaan.unduhanId !== id) return;
+
+    if (status.keadaan === 'selesai') {
+      /*
+       * Ukuran diperiksa SEBELUM orangnya diminta memasang.
+       *
+       * Ini bukan kehati-hatian teoretis: berkas yang panjangnya tepat tetapi
+       * isinya rusak sudah pernah terjadi di HP penguji, dan pemasang Android
+       * menolaknya dengan "paket tampaknya tidak valid" — kalimat yang menunjuk
+       * ke APK-nya, bukan ke unduhannya. Panjang yang MELESET sudah pasti
+       * berkas yang tidak utuh, dan itu yang bisa ditangkap di sini.
+       */
+      const diharapkan = keadaan.ukuranUnduh;
+      const rusak = diharapkan > 0 && status.terunduh > 0 && status.terunduh !== diharapkan;
+      siarkan({
+        unduhanKeadaan: rusak ? 'rusak' : 'selesai',
+        unduhanTerunduh: status.terunduh,
+        unduhanTotal: status.total || diharapkan,
+        unduhanBerkas: rusak ? null : status.berkas,
+        galatUnduh: rusak
+          ? `Berkas yang terunduh ${status.terunduh.toLocaleString('id-ID')} byte, seharusnya ${diharapkan.toLocaleString('id-ID')} byte. Unduhannya tidak utuh — jangan dipasang, unduh ulang.`
+          : null,
+      });
+      return;
+    }
+
+    if (status.keadaan === 'gagal' || status.keadaan === 'hilang') {
+      siarkan({
+        unduhanKeadaan: status.keadaan,
+        galatUnduh:
+          status.keadaan === 'gagal'
+            ? `Unduhan gagal (kode ${status.alasan}). Coba lagi, atau unduh lewat browser.`
+            : null,
+      });
+      return;
+    }
+
+    siarkan({
+      unduhanKeadaan: status.keadaan,
+      unduhanTerunduh: status.terunduh,
+      unduhanTotal: status.total || keadaan.ukuranUnduh,
+    });
+    pemantau = setTimeout(putaran, JEDA_PANTAU_MS);
+  };
+
+  pemantau = setTimeout(putaran, 300);
+};
+
+/**
+ * Lanjutkan memantau unduhan yang sudah berjalan sebelum aplikasi ditutup.
+ *
+ * Inilah yang membedakan unduhan sistem dari unduhan dalam aplikasi: pekerjaan
+ * itu milik Android, jadi ia terus berjalan — dan saat aplikasi dibuka lagi,
+ * yang perlu dipulihkan hanya cara menampilkannya.
+ */
+const lanjutkanPemantauan = async () => {
+  if (!ASLI_NATIF) return;
+  try {
+    const { Preferences } = await prefs();
+    const tersimpan = await Preferences.get({ key: KUNCI_UNDUHAN });
+    if (!tersimpan.value) return;
+
+    const urai = JSON.parse(tersimpan.value);
+    const id = Number(urai?.id);
+    if (!Number.isFinite(id)) return;
+
+    // Unduhan untuk rilis yang sudah bukan rilis terbaru tidak relevan lagi;
+    // menampilkan progresnya hanya menyuruh orang memasang berkas usang.
+    if (keadaan.versiRilis && urai?.versi !== keadaan.versiRilis) {
+      await simpanPenandaUnduh(null, null);
+      return;
+    }
+
+    siarkan({ unduhanId: id, unduhanKeadaan: 'menunggu', unduhanTotal: keadaan.ukuranUnduh });
+    pantauUnduhan(id);
+  } catch {
+    /* penanda tidak terbaca berarti tidak ada yang perlu dilanjutkan */
+  }
+};
+
+/**
+ * Unduh APK versi terbaru lewat DownloadManager, lalu ingat bahwa itu
  * sudah dilakukan.
  *
  * Kenapa lewat browser dan bukan diunduh sendiri: memasang APK dari dalam
@@ -642,23 +858,93 @@ export const mulaiUnduhPembaruan = async () => {
   // perangkat yang di-root.
   const url = urlUnduhAman(keadaan.urlUnduh);
   const versi = keadaan.versiRilis;
-  if (!url || !versi) return false;
-
-  try {
-    const { bukaDiLuar } = await import('./bukaLuar.js');
-    await bukaDiLuar(url);
-  } catch (galat) {
-    siarkan({ galat: galat?.message || 'Tautan unduhan tidak bisa dibuka' });
+  if (!url || !versi) {
+    // Dulu di sini `return false` tanpa suara, dan itu keliru: tombolnya
+    // ditekan, tidak ada yang terjadi, dan tidak ada satu pun keterangan.
+    // Jalur yang tidak bisa dikerjakan harus MENGATAKANNYA.
+    siarkan({ galatUnduh: 'Tautan unduhan untuk versi ini tidak ada' });
     return false;
   }
 
-  siarkan({ unduhDimulai: versi, galat: null });
-  try {
-    const { Preferences } = await prefs();
-    await Preferences.set({ key: KUNCI_UNDUH, value: versi });
-  } catch {
-    /* tidak bertahan sampai aplikasi dibuka lagi; sesi ini tetap ingat */
+  const nama = namaBerkasAman(keadaan.namaBerkas) ?? `NaruReader-${versi}.apk`;
+
+  /*
+   * Jalur utama: DownloadManager milik Android.
+   *
+   * Kenapa bukan browser lagi — dua kegagalan nyata, keduanya terekam:
+   * aplikasi GitHub yang mengunduh di dalam tumpukan tugas NaruReader lalu
+   * membeku di 99% begitu orangnya kembali ke aplikasi ini, dan Chrome yang
+   * melanjutkan unduhan terputus jadi berkas berukuran tepat tapi isinya rusak.
+   * Unduhan sistem tidak bisa terdorong ke latar belakang dan tidak berhenti
+   * saat NaruReader ditutup.
+   */
+  if (ASLI_NATIF) {
+    try {
+      const { mulaiUnduhan } = await import('./unduhSistem.js');
+      const id = await dalamBatas(mulaiUnduhan(url, nama), 'Memulai unduhan sistem');
+      siarkan({
+        unduhDimulai: versi,
+        galatUnduh: null,
+        unduhanId: id,
+        unduhanKeadaan: 'menunggu',
+        unduhanTerunduh: 0,
+        unduhanTotal: keadaan.ukuranUnduh,
+        unduhanBerkas: null,
+      });
+      await simpanPenandaUnduh(versi, id);
+      pantauUnduhan(id);
+      return true;
+    } catch (galat) {
+      // Bukan akhir cerita: jatuh ke browser seperti sebelumnya, tapi dengan
+      // sebabnya tertulis supaya kegagalan ini tidak kembali jadi "tombol yang
+      // tidak melakukan apa-apa".
+      siarkan({ galatUnduh: `Unduhan sistem tidak bisa dimulai (${galat?.message ?? 'sebab tidak diketahui'}); dicoba lewat browser` });
+    }
   }
+
+  try {
+    const { bukaDiLuar } = await import('./bukaLuar.js');
+    await dalamBatas(bukaDiLuar(url), 'Membuka tautan di browser');
+  } catch (galat) {
+    siarkan({ galatUnduh: galat?.message || 'Tautan unduhan tidak bisa dibuka' });
+    return false;
+  }
+
+  siarkan({ unduhDimulai: versi, galatUnduh: null, unduhanId: null, unduhanKeadaan: null });
+  await simpanPenandaUnduh(versi, null);
+  return true;
+};
+
+/**
+ * Buka daftar unduhan sistem; dari sana satu ketukan memulai pemasangan.
+ *
+ * Pemasangannya sengaja TIDAK dikerjakan dari sini — itu menuntut izin
+ * REQUEST_INSTALL_PACKAGES, persis izin yang membuat aplikasi hasil sideload
+ * dicurigai Play Protect.
+ */
+export const bukaUnduhan = async () => {
+  try {
+    const { bukaDaftarUnduhan } = await import('./unduhSistem.js');
+    await dalamBatas(bukaDaftarUnduhan(), 'Membuka daftar unduhan');
+    return true;
+  } catch (galat) {
+    siarkan({ galatUnduh: galat?.message || 'Daftar unduhan tidak bisa dibuka' });
+    return false;
+  }
+};
+
+/** Batalkan unduhan yang sedang berjalan, sekalian buang berkas separuhnya. */
+export const batalkanUnduhanPembaruan = async () => {
+  const id = keadaan.unduhanId;
+  if (id == null) return false;
+  try {
+    const { batalkanUnduhan } = await import('./unduhSistem.js');
+    await dalamBatas(batalkanUnduhan(id), 'Membatalkan unduhan');
+  } catch {
+    /* kalau DownloadManager sudah tidak mengenalnya, hasilnya sama saja */
+  }
+  siarkan({ unduhanId: null, unduhanKeadaan: null, unduhanTerunduh: 0, unduhanBerkas: null, unduhDimulai: null });
+  await simpanPenandaUnduh(null, null);
   return true;
 };
 
@@ -710,8 +996,23 @@ export const usePembaruan = () => {
     // Unduh". Penanda dari rilis sebelumnya tidak boleh menyuruh siapa pun
     // memasang berkas yang sudah tidak relevan.
     sedangDiunduh: adaPembaruan && kini.unduhDimulai === kini.versiRilis,
+
+    // Keadaan unduhan sistem, sudah diterjemahkan jadi pertanyaan yang memang
+    // ditanyakan tampilan — supaya daftar nama keadaan tidak disalin ke setiap
+    // komponen dan berbeda diam-diam begitu salah satunya ditambah.
+    unduhanAktif: kini.unduhanKeadaan === 'menunggu' || kini.unduhanKeadaan === 'berjalan' || kini.unduhanKeadaan === 'jeda',
+    unduhanSelesai: kini.unduhanKeadaan === 'selesai',
+    unduhanRusak: kini.unduhanKeadaan === 'rusak',
+    unduhanGagal: kini.unduhanKeadaan === 'gagal',
+    // null berarti "besarnya belum diketahui" — bilah progres yang melompat dari
+    // 0% ke 100% lebih buruk daripada bilah yang jujur mengaku belum tahu.
+    persenUnduh:
+      kini.unduhanTotal > 0 ? Math.min(100, Math.max(0, Math.round((kini.unduhanTerunduh / kini.unduhanTotal) * 100))) : null,
+
     cekPembaruan,
     abaikanPembaruan,
     mulaiUnduhPembaruan,
+    bukaUnduhan,
+    batalkanUnduhanPembaruan,
   };
 };

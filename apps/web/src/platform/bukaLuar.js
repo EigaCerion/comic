@@ -23,12 +23,33 @@ import { ASLI_NATIF } from './index.js';
  */
 let plugin = null;
 
+/*
+ * Dikembalikan TERBUNGKUS `{ plugin }`, dan itu bukan gaya penulisan.
+ *
+ * registerPlugin() mengembalikan Proxy yang menjawab SETIAP akses properti
+ * dengan sebuah fungsi — termasuk `.then`. Mengembalikan proxy itu apa adanya
+ * dari fungsi `async` membuat mesin promise JavaScript memperlakukannya sebagai
+ * "thenable" dan memanggil `plugin.then(resolve, reject)`. Panggilan itu
+ * diteruskan ke Android sebagai metode plugin bernama "then", dijawab
+ * «"BukaDiLuar.then()" is not implemented on android» — pada rantai promise
+ * TERSENDIRI yang tidak dipegang siapa pun.
+ *
+ * Akibatnya `await muatPlugin()` tidak pernah selesai: bukan resolve, bukan
+ * reject, hanya menggantung selamanya. Pemanggilnya tidak pernah sampai ke
+ * baris berikutnya, try/catch-nya tidak pernah menyala, dan galatnya hanya
+ * muncul sebagai unhandled rejection di konsol — yang pada build rilis tidak
+ * dicatat ke mana pun. Di layar: tombol Unduh yang ditekan dan TIDAK melakukan
+ * apa-apa, tanpa satu pun pesan.
+ *
+ * Satu objek pembungkus menghapus seluruh persoalan itu: objek biasa tidak
+ * punya `.then`, jadi promise-nya selesai seperti promise mana pun.
+ */
 const muatPlugin = async () => {
   if (!plugin) {
     const { registerPlugin } = await import('@capacitor/core');
     plugin = registerPlugin('BukaDiLuar');
   }
-  return plugin;
+  return { plugin };
 };
 
 /**
@@ -51,7 +72,7 @@ export const bukaDiLuar = async (url) => {
     return;
   }
 
-  const BukaDiLuar = await muatPlugin();
+  const { plugin: BukaDiLuar } = await muatPlugin();
   await BukaDiLuar.buka({ url: alamat });
 };
 
